@@ -937,16 +937,30 @@
         async function init() {
             detectDevice();
 
+            const isIOS = detectedPlatform === 'ios';
+            const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+            // SPECIAL HANDLING FOR IPHONE (iOS):
+            // In Safari browser tabs, Apple WebKit intentionally hides window.PushManager.
+            // Apple WebKit ONLY activates PushManager when the web app is launched from the Home Screen!
+            if (isIOS && !isStandalone) {
+                console.log('[iOS] In-browser Safari tab detected. Guiding to Add to Home Screen.');
+                if (iosGuide) iosGuide.style.display = 'block';
+                btnSubscribe.disabled = false;
+                btnSubscribe.className = 'btn btn-primary';
+                btnSubscribe.innerHTML = '<span>📲</span><span>Tap Share (⎋) &rarr; Add to Home Screen</span>';
+                btnSubscribe.onclick = () => {
+                    iosGuide.scrollIntoView({ behavior: 'smooth' });
+                    iosGuide.style.boxShadow = '0 0 25px rgba(56, 189, 248, 0.7)';
+                    setTimeout(() => { iosGuide.style.boxShadow = ''; }, 2500);
+                };
+                return;
+            }
+
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                // If on iPhone/mobile and not secure context
-                const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                if (!isSecure && detectedPlatform === 'ios') {
-                    showToast('Apple requires HTTPS connection for push notifications on iPhone.', 'error');
-                } else {
-                    showToast('Push notifications are not supported on this browser or insecure connection.', 'error');
-                }
+                showToast('Push notifications are not supported on this browser version.', 'error');
                 btnSubscribe.disabled = true;
-                btnText.textContent = 'HTTPS Required';
+                btnText.textContent = 'Not Supported';
                 return;
             }
 
