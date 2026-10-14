@@ -23,7 +23,9 @@ A complete, modern Web Push Notification system built with **Node.js, Express, a
 
 1. Open your terminal in this directory:
    ```bash
-   cd d:\laragon\www\elevenlabs\agentifire\vapi-agetifire\push-notification
+   git clone https://github.com/abu-hammad07/push-notification.git
+   cd push-notification
+   npm install
    node server.js
    ```
 
