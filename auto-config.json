@@ -1,0 +1,16 @@
+{
+  "welcome": {
+    "enabled": true,
+    "title": "🎉 Welcome to PushAlert!",
+    "body": "Your device is now connected. You will automatically receive real-time alerts!",
+    "url": "/",
+    "delaySeconds": 2
+  },
+  "recurring": {
+    "enabled": false,
+    "intervalMinutes": 60,
+    "title": "⚡ Automated Periodic Alert",
+    "body": "This is an automatic notification sent to keep you updated.",
+    "url": "/"
+  }
+}

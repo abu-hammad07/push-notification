@@ -1,0 +1,16 @@
+[
+  {
+    "id": "sub_1792001987804_a692uo",
+    "name": "My PC",
+    "platform": "desktop",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/efGgj-dyrw8:APA91bE0GM9CcCgsWfNpgzWBKhHN7xoSJU3QlYSju3xMlNjiKSk9oaF-_kIYtv9f_oPBZxZ3F1im74LUOsKYqIKN8RJl2_s4WdwHwle7T3em69lr6U8GHbn5q0RqYh2LAD3yb9M80C6S",
+    "keys": {
+      "p256dh": "BLfUid2hwOTgQl65RYogSg0IdINO98g2XkDULvC-Am71BbVof8MtGX1Y6unyCPgsAEfQwTNusSo30GjIxAd6OMg",
+      "auth": "Zp939w5V6bRYpIQNrlLZkA"
+    },
+    "ip": "127.0.0.1",
+    "subscribedAt": "2026-10-14T18:19:47.804Z",
+    "lastActive": "2026-10-14T18:19:47.804Z"
+  }
+]

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#6366f1" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#grad)"/>
+  <!-- Bell Icon -->
+  <g fill="#ffffff" filter="url(#glow)" transform="translate(106, 96) scale(0.6)">
+    <path d="M256 64C150 64 64 150 64 256v128l-48 48v32h480v-32l-48-48V256c0-106-86-192-192-192zm0 416c26.5 0 48-21.5 48-48H208c0 26.5 21.5 48 48 48z"/>
+    <!-- Notification wave -->
+    <circle cx="390" cy="90" r="36" fill="#ef4444"/>
+  </g>
+</svg>

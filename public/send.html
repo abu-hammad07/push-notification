@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notification - Send & Auto Dashboard</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --bg-dark: #090d16;
+            --card-bg: rgba(18, 24, 38, 0.85);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --input-bg: rgba(10, 14, 23, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --apple: #38bdf8;
+            --android: #22c55e;
+            --purple: #a855f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px 20px;
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.10) 0%, transparent 40%);
+        }
+
+        .wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Top Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title-box {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 16px var(--primary-glow);
+        }
+
+        h1 {
+            font-size: 1.7rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-sub {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-link {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--card-border);
+            color: #cbd5e1;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-link:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .stat-icon.total { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+        .stat-icon.ios { background: rgba(56, 189, 248, 0.15); color: var(--apple); }
+        .stat-icon.android { background: rgba(34, 197, 94, 0.15); color: var(--android); }
+        .stat-icon.auto { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
+
+        .stat-number {
+            font-size: 1.7rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: #fff;
+        }
+
+        .stat-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Nav Tabs */
+        .tabs-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 12px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.35);
+            color: #fff;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+        }
+
+        /* Sections */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 960px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Card */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 28px;
+            backdrop-filter: blur(16px);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            padding: 13px 16px;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 85px;
+        }
+
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        /* Radio Target Buttons */
+        .target-options {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .target-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .target-option {
+            position: relative;
+        }
+
+        .target-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .target-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .target-option input:checked + .target-label {
+            background: rgba(99, 102, 241, 0.18);
+            border-color: var(--primary);
+            color: #fff;
+            box-shadow: 0 0 14px var(--primary-glow);
+        }
+
+        /* Send Button */
+        .btn-send {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            color: #ffffff;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px -5px var(--primary-glow);
+            transition: all 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .btn-send:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        /* Auto Config Section Styling */
+        .auto-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 28px;
+            margin-bottom: 24px;
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toggle-info h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-info p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Switch UI */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .3s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Quick Templates */
+        .templates-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .badge-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .badge-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* Timer Test Bar */
+        .timer-box {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            border-radius: 18px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .timer-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-timer {
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            color: #d8b4fe;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-timer:hover {
+            background: rgba(168, 85, 247, 0.4);
+            color: #fff;
+        }
+
+        /* Result Banner */
+        .result-banner {
+            margin-top: 18px;
+            padding: 16px;
+            border-radius: 14px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+            line-height: 1.5;
+        }
+
+        .result-success {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+
+        .result-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        /* Phone frame */
+        .phone-mockup {
+            width: 100%;
+            max-width: 320px;
+            height: 480px;
+            background: #11141c;
+            border: 6px solid #2a3142;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            position: relative;
+            padding: 18px 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-image: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+            margin: 0 auto;
+        }
+
+        .phone-notch {
+            width: 110px;
+            height: 18px;
+            background: #2a3142;
+            border-radius: 0 0 14px 14px;
+            margin: -18px auto 20px auto;
+        }
+
+        .phone-clock {
+            text-align: center;
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 2px;
+            letter-spacing: -1px;
+        }
+
+        .phone-date {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 26px;
+        }
+
+        .mock-notification {
+            background: rgba(255, 255, 255, 0.88);
+            color: #000;
+            border-radius: 18px;
+            padding: 14px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(20px);
+            animation: slideDown 0.3s ease;
+        }
+
+        .phone-mockup.android .mock-notification {
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .mock-app-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .mock-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+        }
+
+        .mock-time {
+            font-size: 0.72rem;
+            opacity: 0.6;
+        }
+
+        .mock-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .mock-body {
+            font-size: 0.82rem;
+            opacity: 0.85;
+            line-height: 1.4;
+        }
+
+        /* Preview Toggles */
+        .preview-toggle {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 16px;
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto 16px auto;
+        }
+
+        .preview-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .preview-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        /* Subscribers List Table */
+        .subscribers-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 24px;
+            backdrop-filter: blur(16px);
+            margin-top: 28px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.88rem;
+        }
+
+        th {
+            color: var(--text-muted);
+            padding: 12px 14px;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        td {
+            padding: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+        }
+
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .platform-badge.ios { background: rgba(56, 189, 248, 0.15); color: var(--apple); }
+        .platform-badge.android { background: rgba(34, 197, 94, 0.15); color: var(--android); }
+        .platform-badge.desktop { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+
+        .btn-delete {
+            background: transparent;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wrapper">
+        
+        <!-- Header -->
+        <header>
+            <div class="header-title-box">
+                <div class="header-icon">🚀</div>
+                <div>
+                    <h1>Push Notification & Automation Dashboard</h1>
+                    <div class="header-sub">Send manual alerts or configure automated push notifications for Android & iOS</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="btnRefresh" class="btn-link" title="Refresh Subscribers">
+                    <span>🔄 Refresh Data</span>
+                </button>
+                <a href="/index.html" class="btn-link">
+                    <span>📱 Subscriber Page</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon total">👥</div>
+                <div>
+                    <div id="statTotal" class="stat-number">0</div>
+                    <div class="stat-title">Total Subscribers</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon ios">🍎</div>
+                <div>
+                    <div id="statIos" class="stat-number">0</div>
+                    <div class="stat-title">Apple iOS Devices</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon android">🤖</div>
+                <div>
+                    <div id="statAndroid" class="stat-number">0</div>
+                    <div class="stat-title">Android Devices</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon auto">🤖</div>
+                <div>
+                    <div id="statAutoStatus" class="stat-number" style="font-size: 1.2rem; color: #34d399;">Active</div>
+                    <div class="stat-title">Auto Welcome Push</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('composeTab')">
+                <span>✍️ Manual Send</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('autoTab')">
+                <span>🤖 Auto Push Settings</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: COMPOSE & SEND MANUAL -->
+        <div id="composeTab" class="tab-content active">
+            <div class="content-grid">
+                
+                <!-- Composer Form -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>✍️ Compose Push Notification</span>
+                    </div>
+
+                    <!-- Quick Presets -->
+                    <div class="templates-bar">
+                        <span style="font-size:0.8rem; color:#94a3b8; align-self:center">Presets:</span>
+                        <button class="badge-btn" onclick="applyTemplate('promo')">🎉 Special Offer</button>
+                        <button class="badge-btn" onclick="applyTemplate('update')">🔔 New Feature</button>
+                        <button class="badge-btn" onclick="applyTemplate('urgent')">⚡ Urgent Alert</button>
+                    </div>
+
+                    <form id="sendForm">
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="notifTitle">Notification Title *</label>
+                            <input type="text" id="notifTitle" class="form-input" placeholder="e.g. 🎉 Flash Sale is Live!" required value="🎉 Hello from Agentifire!">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="notifBody">Notification Body / Message *</label>
+                            <textarea id="notifBody" class="form-textarea" placeholder="Enter message text that will display on subscriber phones..." required>Get 20% off on your next purchase today! Tap here to explore.</textarea>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="form-group">
+                                <label class="form-label" for="notifUrl">Target URL (On Click)</label>
+                                <input type="text" id="notifUrl" class="form-input" placeholder="/" value="/">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="notifIcon">Icon URL</label>
+                                <input type="text" id="notifIcon" class="form-input" placeholder="/icon-192.png" value="/icon-192.png">
+                            </div>
+                        </div>
+
+                        <!-- Target Audience -->
+                        <div class="form-group">
+                            <label class="form-label">Send Target Audience</label>
+                            <div class="target-options">
+                                <label class="target-option">
+                                    <input type="radio" name="target" value="all" checked>
+                                    <div class="target-label">
+                                        <span style="font-size: 1.1rem;">🌐</span>
+                                        <span>All Devices</span>
+                                    </div>
+                                </label>
+                                <label class="target-option">
+                                    <input type="radio" name="target" value="ios">
+                                    <div class="target-label">
+                                        <span style="font-size: 1.1rem;">🍎</span>
+                                        <span>iOS Only</span>
+                                    </div>
+                                </label>
+                                <label class="target-option">
+                                    <input type="radio" name="target" value="android">
+                                    <div class="target-label">
+                                        <span style="font-size: 1.1rem;">🤖</span>
+                                        <span>Android Only</span>
+                                    </div>
+                                </label>
+                                <label class="target-option">
+                                    <input type="radio" name="target" value="desktop">
+                                    <div class="target-label">
+                                        <span style="font-size: 1.1rem;">💻</span>
+                                        <span>Desktop Only</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Single Device -->
+                        <div class="form-group">
+                            <label class="form-label" for="selectSubscriber">Or Choose Specific Subscriber (Optional)</label>
+                            <select id="selectSubscriber" class="form-select">
+                                <option value="">-- Send to audience selected above --</option>
+                            </select>
+                        </div>
+
+                        <!-- Send Button -->
+                        <button type="submit" id="btnSubmit" class="btn-send">
+                            <span>🚀</span>
+                            <span id="btnSubmitText">Send Push Notification Now</span>
+                        </button>
+
+                    </form>
+
+                    <div id="resultBanner" class="result-banner"></div>
+
+                </div>
+
+                <!-- Live Preview Mockup -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>📱 Live Device Preview</span>
+                    </div>
+
+                    <div class="preview-toggle">
+                        <button id="toggleIos" class="preview-btn active" onclick="switchPreview('ios')">🍎 iOS iPhone</button>
+                        <button id="toggleAndroid" class="preview-btn" onclick="switchPreview('android')">🤖 Android</button>
+                    </div>
+
+                    <div id="phoneMockup" class="phone-mockup ios">
+                        <div class="phone-notch"></div>
+                        <div id="clockTime" class="phone-clock">09:41</div>
+                        <div class="phone-date">Tuesday, October 14</div>
+
+                        <div class="mock-notification">
+                            <div class="mock-header">
+                                <div class="mock-app-info">
+                                    <img id="mockIcon" src="/icon-192.png" alt="icon" class="mock-icon">
+                                    <span>PushAlert</span>
+                                </div>
+                                <span class="mock-time">now</span>
+                            </div>
+                            <div id="mockTitle" class="mock-title">🎉 Hello from Agentifire!</div>
+                            <div id="mockBody" class="mock-body">Get 20% off on your next purchase today! Tap here to explore.</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 2: AUTOMATION SETTINGS -->
+        <div id="autoTab" class="tab-content">
+            
+            <!-- 1. Auto Welcome Notification -->
+            <div class="auto-card">
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h3><span>🎉</span> 1. Auto Welcome Notification (On Subscribe)</h3>
+                        <p>Automatically triggers a push notification right after a user enables notifications on Android or iPhone.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="autoWelcomeEnabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="autoWelcomeTitle">Welcome Title</label>
+                    <input type="text" id="autoWelcomeTitle" class="form-input" value="🎉 Welcome to PushAlert!">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="autoWelcomeBody">Welcome Message</label>
+                    <textarea id="autoWelcomeBody" class="form-textarea">Your device is now connected. You will automatically receive real-time alerts!</textarea>
+                </div>
+
+                <div class="input-row">
+                    <div class="form-group">
+                        <label class="form-label" for="autoWelcomeDelay">Auto Send Delay (Seconds)</label>
+                        <input type="number" id="autoWelcomeDelay" class="form-input" min="1" max="60" value="2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="autoWelcomeUrl">Target Redirect URL</label>
+                        <input type="text" id="autoWelcomeUrl" class="form-input" value="/">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Auto Recurring Scheduled Push -->
+            <div class="auto-card">
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h3><span>⏱️</span> 2. Recurring Automated Push Notifications</h3>
+                        <p>Automatically broadcasts a notification to all subscribers at your chosen time interval.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="autoRecurringEnabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="input-row">
+                    <div class="form-group">
+                        <label class="form-label" for="autoRecurringInterval">Broadcast Frequency</label>
+                        <select id="autoRecurringInterval" class="form-select">
+                            <option value="15">Every 15 Minutes</option>
+                            <option value="30">Every 30 Minutes</option>
+                            <option value="60" selected>Every 1 Hour (60 Mins)</option>
+                            <option value="360">Every 6 Hours</option>
+                            <option value="720">Every 12 Hours</option>
+                            <option value="1440">Daily (Every 24 Hours)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="autoRecurringUrl">Click URL</label>
+                        <input type="text" id="autoRecurringUrl" class="form-input" value="/">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="autoRecurringTitle">Recurring Notification Title</label>
+                    <input type="text" id="autoRecurringTitle" class="form-input" value="⚡ Automated Periodic Alert">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="autoRecurringBody">Recurring Notification Message</label>
+                    <textarea id="autoRecurringBody" class="form-textarea">This is an automatic notification sent to keep you updated.</textarea>
+                </div>
+
+                <button type="button" id="btnSaveAutoConfig" class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <span>💾</span>
+                    <span>Save Auto Push Settings</span>
+                </button>
+
+                <div id="autoConfigFeedback" class="result-banner"></div>
+            </div>
+
+            <!-- 3. Delayed Auto Test (Background / Lockscreen Test) -->
+            <div class="timer-box">
+                <div style="font-weight: 700; font-size: 1.05rem; color: #fff; margin-bottom: 4px;">
+                    <span>⏱️ Instant Auto-Timer Test (Test Phone Lockscreen Delivery)</span>
+                </div>
+                <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
+                    Click a timer below, then immediately <strong>minimize your browser or lock your phone</strong>. The server will automatically dispatch the notification in the background!
+                </p>
+
+                <div class="timer-buttons">
+                    <button class="btn-timer" onclick="triggerAutoTimer(5)">⏱️ Auto Send in 5 Seconds</button>
+                    <button class="btn-timer" onclick="triggerAutoTimer(10)">⏱️ Auto Send in 10 Seconds</button>
+                    <button class="btn-timer" onclick="triggerAutoTimer(30)">⏱️ Auto Send in 30 Seconds</button>
+                </div>
+
+                <div id="timerCountdown" style="margin-top: 14px; font-weight: 700; color: #a855f7; display: none;"></div>
+            </div>
+
+        </div>
+
+        <!-- Registered Subscribers Table -->
+        <div class="subscribers-card">
+            <div class="card-title" style="margin-bottom:0;">
+                <span>💾 Registered Subscribers (Stored in subscriptions.json)</span>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Device / Name</th>
+                            <th>Platform</th>
+                            <th>Endpoint Preview</th>
+                            <th>Registered Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subscribersTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align:center; color:#94a3b8; padding:24px;">Loading subscribers...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let subscribersList = [];
+
+        // Elements
+        const statTotal = document.getElementById('statTotal');
+        const statIos = document.getElementById('statIos');
+        const statAndroid = document.getElementById('statAndroid');
+        const statAutoStatus = document.getElementById('statAutoStatus');
+        const selectSubscriber = document.getElementById('selectSubscriber');
+        const subscribersTableBody = document.getElementById('subscribersTableBody');
+        const sendForm = document.getElementById('sendForm');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const btnSubmitText = document.getElementById('btnSubmitText');
+        const resultBanner = document.getElementById('resultBanner');
+        const btnRefresh = document.getElementById('btnRefresh');
+
+        // Auto Settings Elements
+        const autoWelcomeEnabled = document.getElementById('autoWelcomeEnabled');
+        const autoWelcomeTitle = document.getElementById('autoWelcomeTitle');
+        const autoWelcomeBody = document.getElementById('autoWelcomeBody');
+        const autoWelcomeDelay = document.getElementById('autoWelcomeDelay');
+        const autoWelcomeUrl = document.getElementById('autoWelcomeUrl');
+        const autoRecurringEnabled = document.getElementById('autoRecurringEnabled');
+        const autoRecurringInterval = document.getElementById('autoRecurringInterval');
+        const autoRecurringTitle = document.getElementById('autoRecurringTitle');
+        const autoRecurringBody = document.getElementById('autoRecurringBody');
+        const autoRecurringUrl = document.getElementById('autoRecurringUrl');
+        const btnSaveAutoConfig = document.getElementById('btnSaveAutoConfig');
+        const autoConfigFeedback = document.getElementById('autoConfigFeedback');
+
+        // Preview Elements
+        const notifTitle = document.getElementById('notifTitle');
+        const notifBody = document.getElementById('notifBody');
+        const notifIcon = document.getElementById('notifIcon');
+        const mockTitle = document.getElementById('mockTitle');
+        const mockBody = document.getElementById('mockBody');
+        const mockIcon = document.getElementById('mockIcon');
+        const phoneMockup = document.getElementById('phoneMockup');
+        const toggleIos = document.getElementById('toggleIos');
+        const toggleAndroid = document.getElementById('toggleAndroid');
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            if (tabId === 'composeTab') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            }
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Live Preview Synchronization
+        function updateLivePreview() {
+            mockTitle.textContent = notifTitle.value || 'Notification Title';
+            mockBody.textContent = notifBody.value || 'Notification message description goes here...';
+            mockIcon.src = notifIcon.value || '/icon-192.png';
+        }
+
+        notifTitle.addEventListener('input', updateLivePreview);
+        notifBody.addEventListener('input', updateLivePreview);
+        notifIcon.addEventListener('input', updateLivePreview);
+
+        function switchPreview(type) {
+            if (type === 'ios') {
+                phoneMockup.className = 'phone-mockup ios';
+                toggleIos.className = 'preview-btn active';
+                toggleAndroid.className = 'preview-btn';
+            } else {
+                phoneMockup.className = 'phone-mockup android';
+                toggleAndroid.className = 'preview-btn active';
+                toggleIos.className = 'preview-btn';
+            }
+        }
+
+        // Clock time in phone mockup
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const clockEl = document.getElementById('clockTime');
+            if (clockEl) clockEl.textContent = `${hours}:${minutes}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Templates
+        function applyTemplate(type) {
+            if (type === 'promo') {
+                notifTitle.value = '🔥 Weekend Flash Sale (50% Off)!';
+                notifBody.value = 'Exclusive discount for our subscribers! Shop before midnight to save.';
+            } else if (type === 'update') {
+                notifTitle.value = '🚀 New Update Available';
+                notifBody.value = 'We have just released exciting new features. Tap here to test them now!';
+            } else if (type === 'urgent') {
+                notifTitle.value = '⚡ Important Alert';
+                notifBody.value = 'Please review your account settings and recent activity.';
+            }
+            updateLivePreview();
+        }
+
+        // Fetch Subscribers
+        async function fetchSubscribers() {
+            try {
+                const res = await fetch('/api/subscriptions');
+                const data = await res.json();
+                subscribersList = data.subscribers || [];
+
+                statTotal.textContent = data.total || 0;
+                let iosCount = 0, androidCount = 0;
+
+                subscribersList.forEach(s => {
+                    if (s.platform === 'ios') iosCount++;
+                    else if (s.platform === 'android') androidCount++;
+                });
+
+                statIos.textContent = iosCount;
+                statAndroid.textContent = androidCount;
+
+                selectSubscriber.innerHTML = '<option value="">-- Send to audience selected above --</option>';
+                subscribersList.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = `${s.name} (${s.platform.toUpperCase()}) - ${new Date(s.subscribedAt).toLocaleDateString()}`;
+                    selectSubscriber.appendChild(opt);
+                });
+
+                renderTable();
+            } catch (err) {
+                console.error('Error fetching subscribers:', err);
+            }
+        }
+
+        function renderTable() {
+            if (subscribersList.length === 0) {
+                subscribersTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align:center; color:#94a3b8; padding:32px;">
+                            No devices subscribed yet. Open <a href="/index.html" style="color:#818cf8; text-decoration:underline;">Subscriber Page</a> on your Android or iPhone to subscribe!
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            subscribersTableBody.innerHTML = subscribersList.map(sub => {
+                const dateStr = new Date(sub.subscribedAt).toLocaleString();
+                const platformIcon = sub.platform === 'ios' ? '🍎 iOS' : sub.platform === 'android' ? '🤖 Android' : '💻 Desktop';
+                const platformClass = sub.platform === 'ios' ? 'ios' : sub.platform === 'android' ? 'android' : 'desktop';
+
+                return `
+                    <tr>
+                        <td style="font-weight:600; color:#fff;">${escapeHtml(sub.name)}</td>
+                        <td><span class="platform-badge ${platformClass}">${platformIcon}</span></td>
+                        <td style="font-family:monospace; font-size:0.8rem; color:#94a3b8;">${escapeHtml(sub.endpointPreview)}</td>
+                        <td style="font-size:0.8rem; color:#94a3b8;">${dateStr}</td>
+                        <td>
+                            <button class="btn-delete" onclick="deleteSubscriber('${sub.id}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, function(m) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m];
+            });
+        }
+
+        async function deleteSubscriber(id) {
+            if (!confirm('Are you sure you want to delete this subscriber?')) return;
+            try {
+                const res = await fetch('/api/unsubscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.success) fetchSubscribers();
+            } catch (err) {
+                alert('Error deleting subscriber: ' + err.message);
+            }
+        }
+
+        // Send Form Submit
+        sendForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const selectedTarget = document.querySelector('input[name="target"]:checked').value;
+            const singleSubscriberId = selectSubscriber.value;
+
+            btnSubmit.disabled = true;
+            btnSubmitText.textContent = 'Sending Notifications...';
+            resultBanner.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/send-notification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: notifTitle.value.trim(),
+                        body: notifBody.value.trim(),
+                        url: document.getElementById('notifUrl').value.trim() || '/',
+                        icon: notifIcon.value.trim() || '/icon-192.png',
+                        target: singleSubscriberId ? undefined : selectedTarget,
+                        subscriberId: singleSubscriberId || null
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    resultBanner.className = 'result-banner result-success';
+                    resultBanner.innerHTML = `
+                        <strong>🎉 Notification Delivered!</strong><br>
+                        ${data.message}<br>
+                        <small style="opacity:0.85;">Sent: ${data.results.sent} | Failed: ${data.results.failed} | Cleaned Expired: ${data.results.cleaned}</small>
+                    `;
+                    resultBanner.style.display = 'block';
+                    fetchSubscribers();
+                } else {
+                    resultBanner.className = 'result-banner result-error';
+                    resultBanner.innerHTML = `<strong>⚠️ Failed to Send:</strong> ${data.message}`;
+                    resultBanner.style.display = 'block';
+                }
+            } catch (err) {
+                resultBanner.className = 'result-banner result-error';
+                resultBanner.innerHTML = `<strong>❌ Error:</strong> ${err.message}`;
+                resultBanner.style.display = 'block';
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmitText.textContent = 'Send Push Notification Now';
+            }
+        });
+
+        // --- Auto Config Loading & Saving ---
+        async function fetchAutoConfig() {
+            try {
+                const res = await fetch('/api/auto-config');
+                const config = await res.json();
+
+                if (config.welcome) {
+                    autoWelcomeEnabled.checked = config.welcome.enabled !== false;
+                    autoWelcomeTitle.value = config.welcome.title || '';
+                    autoWelcomeBody.value = config.welcome.body || '';
+                    autoWelcomeDelay.value = config.welcome.delaySeconds || 2;
+                    autoWelcomeUrl.value = config.welcome.url || '/';
+                    statAutoStatus.textContent = config.welcome.enabled ? 'Active ✅' : 'Disabled ⏸️';
+                    statAutoStatus.style.color = config.welcome.enabled ? '#34d399' : '#f87171';
+                }
+
+                if (config.recurring) {
+                    autoRecurringEnabled.checked = config.recurring.enabled === true;
+                    autoRecurringInterval.value = config.recurring.intervalMinutes || 60;
+                    autoRecurringTitle.value = config.recurring.title || '';
+                    autoRecurringBody.value = config.recurring.body || '';
+                    autoRecurringUrl.value = config.recurring.url || '/';
+                }
+            } catch (err) {
+                console.error('Error fetching auto config:', err);
+            }
+        }
+
+        btnSaveAutoConfig.addEventListener('click', async () => {
+            btnSaveAutoConfig.disabled = true;
+            btnSaveAutoConfig.innerHTML = '<span>⏳ Saving Settings...</span>';
+
+            const payload = {
+                welcome: {
+                    enabled: autoWelcomeEnabled.checked,
+                    title: autoWelcomeTitle.value.trim(),
+                    body: autoWelcomeBody.value.trim(),
+                    delaySeconds: parseInt(autoWelcomeDelay.value) || 2,
+                    url: autoWelcomeUrl.value.trim() || '/'
+                },
+                recurring: {
+                    enabled: autoRecurringEnabled.checked,
+                    intervalMinutes: parseInt(autoRecurringInterval.value) || 60,
+                    title: autoRecurringTitle.value.trim(),
+                    body: autoRecurringBody.value.trim(),
+                    url: autoRecurringUrl.value.trim() || '/'
+                }
+            };
+
+            try {
+                const res = await fetch('/api/auto-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    autoConfigFeedback.className = 'result-banner result-success';
+                    autoConfigFeedback.innerHTML = '✅ Auto push settings updated and active!';
+                    autoConfigFeedback.style.display = 'block';
+                    statAutoStatus.textContent = payload.welcome.enabled ? 'Active ✅' : 'Disabled ⏸️';
+                    statAutoStatus.style.color = payload.welcome.enabled ? '#34d399' : '#f87171';
+                    setTimeout(() => { autoConfigFeedback.style.display = 'none'; }, 4000);
+                }
+            } catch (err) {
+                autoConfigFeedback.className = 'result-banner result-error';
+                autoConfigFeedback.innerHTML = 'Error: ' + err.message;
+                autoConfigFeedback.style.display = 'block';
+            } finally {
+                btnSaveAutoConfig.disabled = false;
+                btnSaveAutoConfig.innerHTML = '<span>💾 Save Auto Push Settings</span>';
+            }
+        });
+
+        // Trigger Auto Timer Test
+        async function triggerAutoTimer(seconds) {
+            const timerCountdown = document.getElementById('timerCountdown');
+            timerCountdown.style.display = 'block';
+            timerCountdown.innerHTML = `⏳ Auto push scheduled for all devices in <strong>${seconds}</strong> seconds! Lock your phone or minimize now...`;
+
+            try {
+                await fetch('/api/schedule-auto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        seconds,
+                        title: '⏱️ Automated Push Alert',
+                        body: `This notification arrived automatically after a ${seconds}-second background timer!`,
+                        url: '/'
+                    })
+                });
+
+                let remaining = seconds;
+                const interval = setInterval(() => {
+                    remaining--;
+                    if (remaining > 0) {
+                        timerCountdown.innerHTML = `⏳ Notification arriving automatically in <strong>${remaining}</strong> seconds...`;
+                    } else {
+                        timerCountdown.innerHTML = `🚀 Notification sent automatically! Check your notification bar.`;
+                        clearInterval(interval);
+                        setTimeout(() => { timerCountdown.style.display = 'none'; }, 5000);
+                    }
+                }, 1000);
+
+            } catch (err) {
+                timerCountdown.innerHTML = 'Error scheduling: ' + err.message;
+            }
+        }
+
+        btnRefresh.addEventListener('click', () => {
+            fetchSubscribers();
+            fetchAutoConfig();
+        });
+
+        // Init
+        window.addEventListener('load', () => {
+            fetchSubscribers();
+            fetchAutoConfig();
+            updateLivePreview();
+        });
+    </script>
+</body>
+</html>

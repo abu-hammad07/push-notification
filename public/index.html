@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Push Notification - Android & iOS</title>
+    
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PushAlert">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-glow: rgba(99, 102, 241, 0.35);
+            --bg-dark: #090d16;
+            --card-bg: rgba(18, 24, 38, 0.75);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --apple: #38bdf8;
+            --android: #22c55e;
+            --purple: #a855f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 24px 16px;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.12) 0%, transparent 40%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Top Bar */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 4px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.15rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .admin-link-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--card-border);
+            color: #cbd5e1;
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .admin-link-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* Main Card */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 28px 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Auto Banner */
+        .auto-banner {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(99, 102, 241, 0.12));
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 16px;
+            padding: 12px 14px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #e9d5ff;
+        }
+
+        /* Device Badge */
+        .device-badge-wrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .device-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .device-badge.ios {
+            border-color: rgba(56, 189, 248, 0.3);
+            background: rgba(56, 189, 248, 0.08);
+            color: var(--apple);
+        }
+
+        .device-badge.android {
+            border-color: rgba(34, 197, 94, 0.3);
+            background: rgba(34, 197, 94, 0.08);
+            color: var(--android);
+        }
+
+        /* iOS Step Guide */
+        .ios-guide {
+            display: none;
+            background: linear-gradient(145deg, rgba(56, 189, 248, 0.1), rgba(99, 102, 241, 0.06));
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .ios-guide-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--apple);
+            margin-bottom: 10px;
+        }
+
+        .ios-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .ios-step-num {
+            width: 20px;
+            height: 20px;
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--apple);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* Status Indicator */
+        .status-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .status-label {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--warning);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.active {
+            background: var(--success);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+        }
+
+        .status-dot.denied {
+            background: var(--danger);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* Inputs */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 13px 16px;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 15px 20px;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            color: #ffffff;
+            box-shadow: 0 10px 25px -5px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 14px 30px -5px rgba(99, 102, 241, 0.5);
+            filter: brightness(1.05);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .btn-auto-test {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.2));
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            color: #e9d5ff;
+            margin-top: 10px;
+        }
+
+        .btn-auto-test:hover {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(99, 102, 241, 0.35));
+            color: #fff;
+        }
+
+        .btn-danger-outline {
+            background: transparent;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            padding: 12px;
+        }
+
+        .btn-danger-outline:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Log / Toast */
+        .toast-box {
+            margin-top: 18px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            display: none;
+            animation: fadeIn 0.3s ease;
+            line-height: 1.4;
+        }
+
+        .toast-success {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+
+        .toast-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .toast-info {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+        }
+
+        /* Auto Prompt Slide-down Modal */
+        .auto-prompt-overlay {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: 90%;
+            max-width: 440px;
+            animation: slideDownBounce 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideDownBounce {
+            0% { opacity: 0; transform: translate(-50%, -30px) scale(0.95); }
+            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        .auto-prompt-box {
+            background: rgba(18, 24, 38, 0.95);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 25px rgba(99, 102, 241, 0.25);
+            border-radius: 20px;
+            padding: 18px 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .auto-prompt-content {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .auto-prompt-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .auto-prompt-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .auto-prompt-desc {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            line-height: 1.35;
+        }
+
+        .auto-prompt-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-prompt-cancel {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #cbd5e1;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-prompt-cancel:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .btn-prompt-allow {
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            border: none;
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px var(--primary-glow);
+            transition: all 0.2s ease;
+        }
+
+        .btn-prompt-allow:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        /* Top arrow indicator pointing to native browser prompt */
+        .native-prompt-hint {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 20px;
+            background: rgba(18, 24, 38, 0.95);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 12px 18px;
+            color: #fff;
+            font-size: 0.88rem;
+            font-weight: 700;
+            z-index: 10000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px var(--primary-glow);
+            animation: bounceTop 1s infinite alternate;
+        }
+
+        @keyframes bounceTop {
+            from { transform: translateY(0); }
+            to { transform: translateY(-6px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Native Browser Prompt Guide Hint (Points directly to Chrome/Browser top-left prompt) -->
+    <div id="nativePromptHint" class="native-prompt-hint">
+        <span>👆 Click "Allow" on the browser popup above</span>
+    </div>
+
+    <!-- Automatic Slide-down Permission Prompt (Auto Popup) -->
+    <div id="autoPromptModal" class="auto-prompt-overlay" style="display: none;">
+        <div class="auto-prompt-box">
+            <div class="auto-prompt-content">
+                <div class="auto-prompt-icon">🔔</div>
+                <div class="auto-prompt-text">
+                    <div class="auto-prompt-title">Enable Notifications?</div>
+                    <div class="auto-prompt-desc">Allow notifications to receive instant updates & alerts directly on this device.</div>
+                </div>
+            </div>
+            <div class="auto-prompt-actions">
+                <button class="btn-prompt-cancel" onclick="dismissAutoPrompt()">Later</button>
+                <button class="btn-prompt-allow" onclick="confirmAutoPrompt()">Allow Notifications</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <!-- Navigation Header -->
+        <div class="top-nav">
+            <div class="logo">
+                <div class="logo-icon">🔔</div>
+                <span>PushAlert</span>
+            </div>
+            <a href="/send.html" class="admin-link-btn">
+                <span>Send Panel</span>
+                <span>📤</span>
+            </a>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card">
+            
+            <div class="device-badge-wrap">
+                <div id="deviceBadge" class="device-badge">
+                    <span>🔍 Detecting Device...</span>
+                </div>
+            </div>
+
+            <div class="card-header">
+                <h1 class="card-title">Enable Push Notifications</h1>
+                <p class="card-subtitle">Receive instant updates and alerts directly on your Android or iPhone device.</p>
+            </div>
+
+            <!-- Insecure HTTP Warning (Shown when opened via IP instead of HTTPS) -->
+            <div id="httpWarning" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 16px; padding: 16px; margin-bottom: 20px; color: #fca5a5; font-size: 0.85rem; line-height: 1.5;">
+                <div style="font-weight: 800; color: #f87171; font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                    <span>🔒</span>
+                    <span>HTTPS Required on iPhone / Mobile</span>
+                </div>
+                Apple Safari blocks Web Push notifications over plain HTTP (<code>http://...</code>). To test on iPhone:
+                <br>1. Run an HTTPS tunnel on PC (e.g. <code>npx localtunnel --port 4000</code>).
+                <br>2. Open the <strong>https://</strong> URL in Safari.
+                <br>3. Tap <strong>Share &rarr; Add to Home Screen</strong>.
+            </div>
+
+            <!-- Blocked Permission Reset Helper -->
+            <div id="blockedGuide" style="display: none; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 16px; padding: 16px; margin-bottom: 20px; color: #fde68a; font-size: 0.85rem; line-height: 1.5;">
+                <div style="font-weight: 800; color: #fbbf24; font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚠️</span>
+                    <span>Notifications are Blocked in Browser</span>
+                </div>
+                Default popup cannot open because permissions are blocked.<br>
+                <strong>To show popup again:</strong><br>
+                1. Click the <strong>tune/lock icon 🔒</strong> in your browser address bar (top-left).<br>
+                2. Change <strong>Notifications</strong> to <strong>"Ask"</strong> or click <strong>"Reset permission"</strong>.<br>
+                3. Refresh this page, and the popup will show up automatically!
+            </div>
+
+            <!-- Auto Notification Notice Banner -->
+            <div class="auto-banner">
+                <span style="font-size:1.3rem;">⚡</span>
+                <div>
+                    <strong>Auto Welcome Notification:</strong> When you subscribe, an automatic welcome alert will be sent to your device in 2 seconds!
+                </div>
+            </div>
+
+            <!-- iOS Specific Add to Home Screen Instructions -->
+            <div id="iosGuide" class="ios-guide">
+                <div class="ios-guide-title">
+                    <span>📱 iPhone / iPad Notice</span>
+                </div>
+                <div class="ios-step">
+                    <div class="ios-step-num">1</div>
+                    <div>Tap the <strong>Share button</strong> <span style="font-size:1.1rem">⎋</span> at the bottom bar in Safari.</div>
+                </div>
+                <div class="ios-step">
+                    <div class="ios-step-num">2</div>
+                    <div>Scroll down and tap <strong>"Add to Home Screen"</strong> <span style="font-size:1.1rem">➕</span>.</div>
+                </div>
+                <div class="ios-step">
+                    <div class="ios-step-num">3</div>
+                    <div>Open this app from your Home Screen & tap Subscribe!</div>
+                </div>
+            </div>
+
+            <!-- Status Indicator -->
+            <div class="status-box">
+                <div class="status-label">
+                    <div id="statusDot" class="status-dot"></div>
+                    <span>Notification Status</span>
+                </div>
+                <div id="statusText" class="status-text">Not Subscribed</div>
+            </div>
+
+            <!-- Custom Device Name Input -->
+            <div class="form-group">
+                <label class="form-label" for="deviceName">Device Label (Optional)</label>
+                <input type="text" id="deviceName" class="form-input" placeholder="e.g. Hammad's iPhone 15 Pro">
+            </div>
+
+            <!-- Action Buttons -->
+            <button id="btnSubscribe" class="btn btn-primary">
+                <span>🔔</span>
+                <span id="btnText">Enable Notifications</span>
+            </button>
+
+            <!-- Test Notification Button -->
+            <button id="btnTest" class="btn btn-secondary" style="display: none;">
+                <span>🚀</span>
+                <span>Send Instant Test Notification</span>
+            </button>
+
+            <!-- Background Auto Timer Button -->
+            <button id="btnAutoTimer" class="btn btn-auto-test" style="display: none;">
+                <span>⏱️</span>
+                <span>Test Auto Push in 5s (Lock Screen Test)</span>
+            </button>
+
+            <!-- Unsubscribe Button -->
+            <button id="btnUnsubscribe" class="btn btn-danger-outline" style="display: none;">
+                <span>🔕 Unsubscribe this Device</span>
+            </button>
+
+            <!-- Toast Messages -->
+            <div id="toast" class="toast-box"></div>
+
+        </div>
+
+        <p class="footer-note">Supports Android (Chrome/Firefox/Samsung) & iOS 16.4+ (Safari/PWA)</p>
+
+    </div>
+
+    <script>
+        function urlB64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        let swRegistration = null;
+        let isSubscribed = false;
+        let currentSubscriberId = localStorage.getItem('push_sub_id') || null;
+        let detectedPlatform = 'desktop';
+
+        const deviceBadge = document.getElementById('deviceBadge');
+        const iosGuide = document.getElementById('iosGuide');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const deviceNameInput = document.getElementById('deviceName');
+        const btnSubscribe = document.getElementById('btnSubscribe');
+        const btnText = document.getElementById('btnText');
+        const btnTest = document.getElementById('btnTest');
+        const btnAutoTimer = document.getElementById('btnAutoTimer');
+        const btnUnsubscribe = document.getElementById('btnUnsubscribe');
+        const toast = document.getElementById('toast');
+
+        function detectDevice() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const isAndroid = /android/i.test(ua);
+            const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+            const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const httpWarning = document.getElementById('httpWarning');
+
+            if (isIOS) {
+                detectedPlatform = 'ios';
+                deviceBadge.className = 'device-badge ios';
+                deviceBadge.innerHTML = '<span>🍎</span><span>Apple iOS Device (iPhone/iPad)</span>';
+                deviceNameInput.placeholder = 'e.g. My iPhone 15 Pro';
+
+                // On iPhone, if opened over plain HTTP IP, show the HTTPS requirement warning
+                if (!isSecure && httpWarning) {
+                    httpWarning.style.display = 'block';
+                }
+
+                if (!isStandalone) {
+                    iosGuide.style.display = 'block';
+                }
+            } else if (isAndroid) {
+                detectedPlatform = 'android';
+                deviceBadge.className = 'device-badge android';
+                deviceBadge.innerHTML = '<span>🤖</span><span>Android Device Detected</span>';
+                deviceNameInput.placeholder = 'e.g. My Samsung Galaxy S24';
+
+                if (!isSecure && httpWarning) {
+                    httpWarning.style.display = 'block';
+                }
+            } else {
+                detectedPlatform = 'desktop';
+                deviceBadge.className = 'device-badge';
+                deviceBadge.innerHTML = '<span>💻</span><span>Desktop Browser Detected</span>';
+                deviceNameInput.placeholder = 'e.g. Office PC / Laptop';
+            }
+
+            if (!deviceNameInput.value) {
+                deviceNameInput.value = (detectedPlatform === 'ios' ? 'iPhone' : detectedPlatform === 'android' ? 'Android Phone' : 'My PC');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            toast.className = `toast-box toast-${type}`;
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 6000);
+        }
+
+        function updateUIState() {
+            const blockedGuide = document.getElementById('blockedGuide');
+
+            if (Notification.permission === 'denied') {
+                statusDot.className = 'status-dot denied';
+                statusText.textContent = 'Permission Blocked';
+                btnSubscribe.disabled = true;
+                btnText.textContent = 'Blocked in Browser Settings';
+                btnTest.style.display = 'none';
+                btnAutoTimer.style.display = 'none';
+                btnUnsubscribe.style.display = 'none';
+                if (autoPromptModal) autoPromptModal.style.display = 'none';
+                if (nativePromptHint) nativePromptHint.style.display = 'none';
+                if (blockedGuide) blockedGuide.style.display = 'block';
+                return;
+            } else {
+                if (blockedGuide) blockedGuide.style.display = 'none';
+            }
+
+            if (isSubscribed || Notification.permission === 'granted') {
+                if (autoPromptModal) autoPromptModal.style.display = 'none';
+                if (nativePromptHint) nativePromptHint.style.display = 'none';
+            }
+
+            if (isSubscribed) {
+                statusDot.className = 'status-dot active';
+                statusText.textContent = 'Active & Subscribed ✅';
+                btnSubscribe.className = 'btn btn-success';
+                btnText.textContent = 'Subscribed!';
+                btnSubscribe.disabled = true;
+                btnTest.style.display = 'flex';
+                btnAutoTimer.style.display = 'flex';
+                btnUnsubscribe.style.display = 'block';
+            } else {
+                statusDot.className = 'status-dot';
+                statusText.textContent = 'Not Subscribed';
+                btnSubscribe.className = 'btn btn-primary';
+                btnText.textContent = 'Enable Notifications';
+                btnSubscribe.disabled = false;
+                btnTest.style.display = 'none';
+                btnAutoTimer.style.display = 'none';
+                btnUnsubscribe.style.display = 'none';
+            }
+        }
+
+        // --- Core Subscribe Function (Callable automatically or manually) ---
+        async function triggerSubscribe(isAuto = false) {
+            if (isSubscribed) return;
+            if (Notification.permission === 'denied') {
+                updateUIState();
+                return;
+            }
+
+            console.log(`[PUSH] Triggering permission request (isAuto: ${isAuto})...`);
+            btnSubscribe.disabled = true;
+            btnText.textContent = isAuto ? 'Auto Requesting Permission...' : 'Requesting Permission...';
+
+            try {
+                // 1. Request native browser permission (Opens browser's default prompt)
+                const permission = await Notification.requestPermission();
+                console.log(`[PUSH] Permission result:`, permission);
+
+                if (permission !== 'granted') {
+                    updateUIState();
+                    return;
+                }
+
+                btnText.textContent = 'Connecting Server...';
+
+                // 2. Fetch VAPID Public Key from Server
+                const configRes = await fetch('/api/config');
+                const config = await configRes.json();
+                if (!config.publicKey) {
+                    throw new Error('Could not fetch VAPID Public Key from server');
+                }
+
+                // Ensure service worker is active
+                if (!swRegistration) {
+                    swRegistration = await navigator.serviceWorker.ready;
+                }
+
+                // 3. Subscribe to Push Manager
+                const convertedVapidKey = urlB64ToUint8Array(config.publicKey);
+                const subscription = await swRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedVapidKey
+                });
+
+                btnText.textContent = 'Saving Subscription...';
+
+                // 4. Send Subscription to Server (subscriptions.json)
+                const saveRes = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscription: subscription,
+                        deviceName: deviceNameInput.value.trim() || 'My Device',
+                        platform: detectedPlatform,
+                        userAgent: navigator.userAgent
+                    })
+                });
+
+                const saveResult = await saveRes.json();
+                if (saveResult.success) {
+                    isSubscribed = true;
+                    if (saveResult.subscriber && saveResult.subscriber.id) {
+                        currentSubscriberId = saveResult.subscriber.id;
+                        localStorage.setItem('push_sub_id', currentSubscriberId);
+                    }
+                    showToast('🎉 Subscribed successfully! Auto Welcome notification is arriving in 2s...', 'success');
+                } else {
+                    throw new Error(saveResult.error || 'Failed to save subscription');
+                }
+
+            } catch (err) {
+                console.error('Subscription error:', err);
+                if (!isAuto) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            } finally {
+                updateUIState();
+            }
+        }
+
+        const autoPromptModal = document.getElementById('autoPromptModal');
+        const nativePromptHint = document.getElementById('nativePromptHint');
+
+        function showAutoPrompt() {
+            if (!isSubscribed && Notification.permission === 'default') {
+                autoPromptModal.style.display = 'block';
+            }
+        }
+
+        function dismissAutoPrompt() {
+            autoPromptModal.style.display = 'none';
+        }
+
+        function confirmAutoPrompt() {
+            autoPromptModal.style.display = 'none';
+            nativePromptHint.style.display = 'block';
+            setTimeout(() => { nativePromptHint.style.display = 'none'; }, 6000);
+            triggerSubscribe(false);
+        }
+
+        async function init() {
+            detectDevice();
+
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                // If on iPhone/mobile and not secure context
+                const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                if (!isSecure && detectedPlatform === 'ios') {
+                    showToast('Apple requires HTTPS connection for push notifications on iPhone.', 'error');
+                } else {
+                    showToast('Push notifications are not supported on this browser or insecure connection.', 'error');
+                }
+                btnSubscribe.disabled = true;
+                btnText.textContent = 'HTTPS Required';
+                return;
+            }
+
+            try {
+                swRegistration = await navigator.serviceWorker.register('/sw.js');
+                const subscription = await swRegistration.pushManager.getSubscription();
+                isSubscribed = !(subscription === null);
+                updateUIState();
+
+                // --- AUTO POPUP ON EVERY REFRESH: If not subscribed, auto prompt immediately ---
+                if (!isSubscribed && Notification.permission !== 'granted') {
+                    // 1. Slide down the Auto Prompt Modal on every refresh
+                    setTimeout(() => {
+                        showAutoPrompt();
+                    }, 200);
+
+                    // 2. Request native permission dialog
+                    setTimeout(() => {
+                        triggerSubscribe(true);
+                    }, 500);
+
+                    // 3. Fallback: on ANY touch, click, scroll anywhere on the screen, invoke native prompt
+                    const userActionHandler = (e) => {
+                        if (e && e.target && e.target.classList && e.target.classList.contains('btn-prompt-cancel')) return;
+                        if (!isSubscribed && Notification.permission === 'default') {
+                            dismissAutoPrompt();
+                            triggerSubscribe(false);
+                        }
+                    };
+                    ['click', 'touchstart', 'scroll', 'keydown'].forEach(evt => {
+                        window.addEventListener(evt, userActionHandler, { once: true, passive: true });
+                    });
+                }
+
+            } catch (error) {
+                console.error('Service Worker Registration failed:', error);
+                showToast('Service Worker: ' + error.message, 'error');
+            }
+        }
+
+        // Subscribe Action Button click
+        btnSubscribe.addEventListener('click', () => {
+            triggerSubscribe(false);
+        });
+
+        // Test Notification
+        btnTest.addEventListener('click', async () => {
+            btnTest.disabled = true;
+            btnTest.innerHTML = '<span>⏳</span><span>Sending test...</span>';
+
+            try {
+                const res = await fetch('/api/send-notification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: '🔔 Test Notification',
+                        body: 'Awesome! Push notification is working perfectly on this device.',
+                        icon: '/icon-192.png',
+                        url: '/',
+                        subscriberId: currentSubscriberId || null,
+                        target: currentSubscriberId ? undefined : 'all'
+                    })
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    showToast('✅ Test notification sent! Check your notification bar.', 'success');
+                } else {
+                    showToast('Failed to send test: ' + result.message, 'error');
+                }
+            } catch (e) {
+                showToast('Error sending test notification: ' + e.message, 'error');
+            } finally {
+                btnTest.disabled = false;
+                btnTest.innerHTML = '<span>🚀</span><span>Send Instant Test Notification</span>';
+            }
+        });
+
+        // Background Auto Timer Button
+        btnAutoTimer.addEventListener('click', async () => {
+            btnAutoTimer.disabled = true;
+            btnAutoTimer.innerHTML = '<span>⏳</span><span>Scheduling in 5s...</span>';
+
+            try {
+                await fetch('/api/schedule-auto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        seconds: 5,
+                        title: '⏱️ Background Auto Notification',
+                        body: 'This notification arrived automatically after 5 seconds! Background delivery verified.',
+                        url: '/',
+                        subscriberId: currentSubscriberId
+                    })
+                });
+
+                showToast('⏱️ Auto notification scheduled! Minimize browser or lock screen now...', 'info');
+
+                let count = 5;
+                const interval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        btnAutoTimer.innerHTML = `<span>⏳</span><span>Arriving in ${count}s...</span>`;
+                    } else {
+                        btnAutoTimer.disabled = false;
+                        btnAutoTimer.innerHTML = '<span>⏱️</span><span>Test Auto Push in 5s (Lock Screen Test)</span>';
+                        clearInterval(interval);
+                    }
+                }, 1000);
+
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+                btnAutoTimer.disabled = false;
+                btnAutoTimer.innerHTML = '<span>⏱️</span><span>Test Auto Push in 5s (Lock Screen Test)</span>';
+            }
+        });
+
+        // Unsubscribe Action
+        btnUnsubscribe.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to unsubscribe this device?')) return;
+
+            try {
+                const subscription = await swRegistration.pushManager.getSubscription();
+                if (subscription) {
+                    await subscription.unsubscribe();
+                    await fetch('/api/unsubscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            endpoint: subscription.endpoint,
+                            id: currentSubscriberId
+                        })
+                    });
+                }
+                isSubscribed = false;
+                localStorage.removeItem('push_sub_id');
+                currentSubscriberId = null;
+                showToast('Device unsubscribed successfully.', 'info');
+            } catch (err) {
+                showToast('Error unsubscribing: ' + err.message, 'error');
+            } finally {
+                updateUIState();
+            }
+        });
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
