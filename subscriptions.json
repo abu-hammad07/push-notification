@@ -11,6 +11,13 @@
     },
     "ip": "127.0.0.1",
     "subscribedAt": "2026-10-14T18:19:47.804Z",
-    "lastActive": "2026-10-14T18:19:47.804Z"
+    "lastActive": "2026-10-14T18:19:47.804Z",
+    "phone": "923001234567",
+    "whatsapp24h": {
+      "isActive": true,
+      "openedAt": "2026-10-16T07:15:10.000Z",
+      "expiresAt": "2026-10-17T07:15:11.674Z",
+      "lastMessage": "Hi! I want to complete my subscription"
+    }
   }
 ]

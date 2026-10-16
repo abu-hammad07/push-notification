@@ -674,11 +674,24 @@
                 <input type="text" id="deviceName" class="form-input" placeholder="e.g. Hammad's iPhone 15 Pro">
             </div>
 
+            <!-- WhatsApp Number Input -->
+            <div class="form-group">
+                <label class="form-label" for="phoneInput">WhatsApp Number (Optional)</label>
+                <input type="tel" id="phoneInput" class="form-input" placeholder="e.g. +923001234567 or 15553815350">
+                <span style="font-size: 0.76rem; color: #94a3b8; display: block; margin-top: 4px;">Link this device for instant 24h WhatsApp alerts</span>
+            </div>
+
             <!-- Action Buttons -->
             <button id="btnSubscribe" class="btn btn-primary">
                 <span>🔔</span>
                 <span id="btnText">Enable Notifications</span>
             </button>
+
+            <!-- Direct 1-Click WhatsApp Activation Button -->
+            <a id="btnDirectWhatsApp" href="#" target="_blank" class="btn" style="display: none; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #ffffff; text-decoration: none; margin-top: 12px; font-weight: 700; box-shadow: 0 10px 25px -5px rgba(37, 211, 102, 0.4); justify-content: center; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">💬</span>
+                <span>Open WhatsApp & Complete 24h Activation</span>
+            </a>
 
             <!-- Test Notification Button -->
             <button id="btnTest" class="btn btn-secondary" style="display: none;">
@@ -730,7 +743,9 @@
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const deviceNameInput = document.getElementById('deviceName');
+        const phoneInput = document.getElementById('phoneInput');
         const btnSubscribe = document.getElementById('btnSubscribe');
+        const btnDirectWhatsApp = document.getElementById('btnDirectWhatsApp');
         const btnText = document.getElementById('btnText');
         const btnTest = document.getElementById('btnTest');
         const btnAutoTimer = document.getElementById('btnAutoTimer');
@@ -820,6 +835,7 @@
                 btnSubscribe.className = 'btn btn-success';
                 btnText.textContent = 'Subscribed!';
                 btnSubscribe.disabled = true;
+                if (btnDirectWhatsApp) btnDirectWhatsApp.style.display = 'flex';
                 btnTest.style.display = 'flex';
                 btnAutoTimer.style.display = 'flex';
                 btnUnsubscribe.style.display = 'block';
@@ -829,6 +845,7 @@
                 btnSubscribe.className = 'btn btn-primary';
                 btnText.textContent = 'Enable Notifications';
                 btnSubscribe.disabled = false;
+                if (btnDirectWhatsApp) btnDirectWhatsApp.style.display = 'none';
                 btnTest.style.display = 'none';
                 btnAutoTimer.style.display = 'none';
                 btnUnsubscribe.style.display = 'none';
@@ -865,6 +882,9 @@
                 if (!config.publicKey) {
                     throw new Error('Could not fetch VAPID Public Key from server');
                 }
+                if (btnDirectWhatsApp && config.waWelcomeLink) {
+                    btnDirectWhatsApp.href = config.waWelcomeLink;
+                }
 
                 // Ensure service worker is active
                 if (!swRegistration) {
@@ -888,7 +908,8 @@
                         subscription: subscription,
                         deviceName: deviceNameInput.value.trim() || 'My Device',
                         platform: detectedPlatform,
-                        userAgent: navigator.userAgent
+                        userAgent: navigator.userAgent,
+                        phone: phoneInput ? phoneInput.value.trim() : null
                     })
                 });
 
@@ -899,7 +920,11 @@
                         currentSubscriberId = saveResult.subscriber.id;
                         localStorage.setItem('push_sub_id', currentSubscriberId);
                     }
-                    showToast('🎉 Subscribed successfully! Auto Welcome notification is arriving in 2s...', 'success');
+                    if (btnDirectWhatsApp && saveResult.waLink) {
+                        btnDirectWhatsApp.href = saveResult.waLink;
+                        btnDirectWhatsApp.style.display = 'flex';
+                    }
+                    showToast('🎉 Subscribed! Auto Welcome push arriving in 2s (or tap WhatsApp button below)!', 'success');
                 } else {
                     throw new Error(saveResult.error || 'Failed to save subscription');
                 }

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const webpush = require('web-push');
 const cors = require('cors');
@@ -10,11 +11,104 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- Files ---
 const VAPID_FILE = path.join(__dirname, 'vapid-keys.json');
 const SUBSCRIPTIONS_FILE = path.join(__dirname, 'subscriptions.json');
 const AUTO_CONFIG_FILE = path.join(__dirname, 'auto-config.json');
+const ERROR_LOGS_FILE = path.join(__dirname, 'error-logs.json');
+
+// --- Helper: Read/Write Error Logs JSON ---
+function getErrorLogs() {
+    if (!fs.existsSync(ERROR_LOGS_FILE)) {
+        fs.writeFileSync(ERROR_LOGS_FILE, JSON.stringify([]));
+        return [];
+    }
+    try {
+        const data = fs.readFileSync(ERROR_LOGS_FILE, 'utf8');
+        return JSON.parse(data) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function logError({ type = 'GENERAL_ERROR', message, details = null, req = null }) {
+    const logs = getErrorLogs();
+    const newEntry = {
+        id: 'err_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        timestamp: new Date().toISOString(),
+        type,
+        message: typeof message === 'string' ? message : (message?.message || JSON.stringify(message)),
+        details: details ? (typeof details === 'object' ? details : { raw: details }) : (message?.stack ? { stack: message.stack } : null),
+        request: req ? {
+            method: req.method,
+            url: req.originalUrl || req.url,
+            ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+            userAgent: req.headers['user-agent']
+        } : null
+    };
+
+    console.error(`❌ [ERROR LOGGED - ${type}]`, newEntry.message);
+
+    logs.unshift(newEntry);
+    if (logs.length > 300) logs.pop();
+
+    try {
+        fs.writeFileSync(ERROR_LOGS_FILE, JSON.stringify(logs, null, 2), 'utf8');
+    } catch (err) {
+        console.error('Failed to write to error-logs.json:', err.message);
+    }
+
+    return newEntry;
+}
+
+// --- WhatsApp Meta Cloud API Configuration from .env ---
+const WABA_ID = process.env.WABA_ID || process.env.waba_id || '';
+const BUSINESS_ACCOUNT_ID = process.env.BUSINESS_ACCOUNT_ID || process.env.business_account_id || '';
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || process.env.phone_number_id || '';
+const SYSTEM_TOKEN = process.env.SYSTEM_TOKEN || process.env.system_token || '';
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || process.env.whatsapp_verify_token || 'agentifire_push_webhook_verify_2026';
+let WHATSAPP_DISPLAY_PHONE_NUMBER = (process.env.WHATSAPP_DISPLAY_PHONE_NUMBER || process.env.whatsapp_display_phone_number || '15553815350').replace(/[^0-9]/g, '');
+
+// Fetch & sync verified business phone number from Meta Graph API
+async function syncWhatsAppBusinessProfile() {
+    if (!PHONE_NUMBER_ID || !SYSTEM_TOKEN) {
+        console.log('[WHATSAPP SYNC] Meta credentials missing in .env');
+        return;
+    }
+    try {
+        const res = await fetch(`https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}?fields=display_phone_number,verified_name,code_verification_status,quality_rating`, {
+            headers: { Authorization: `Bearer ${SYSTEM_TOKEN}` }
+        });
+        const data = await res.json();
+        if (data && data.display_phone_number) {
+            WHATSAPP_DISPLAY_PHONE_NUMBER = data.display_phone_number.replace(/[^0-9]/g, '');
+            console.log(`[WHATSAPP SYNC] Connected to Meta: ${data.verified_name || 'Business'} (${data.display_phone_number})`);
+        } else if (data.error) {
+            logError({
+                type: 'META_PROFILE_SYNC_ERROR',
+                message: `Meta Graph API error: ${data.error.message}`,
+                details: data.error
+            });
+            console.warn('[WHATSAPP SYNC WARNING]', data.error.message);
+        }
+    } catch (e) {
+        logError({
+            type: 'META_GRAPH_CONNECTION_FAILED',
+            message: `Failed to connect to Meta Graph API: ${e.message}`,
+            details: { stack: e.stack }
+        });
+        console.warn('[WHATSAPP SYNC WARNING] Failed to connect to Meta Graph API:', e.message);
+    }
+}
+
+// Generate direct WhatsApp deep-link with prefilled text
+function getWhatsAppDeepLink(text = '') {
+    const cleanNumber = (WHATSAPP_DISPLAY_PHONE_NUMBER || '15553815350').replace(/[^0-9]/g, '');
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`;
+}
 
 // --- Helper: Ensure VAPID Keys exist ---
 let vapidKeys;
@@ -58,15 +152,62 @@ function saveSubscriptions(subs) {
     fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(subs, null, 2), 'utf8');
 }
 
+// --- Helper: Check 24-Hour Roundtrip Status ---
+function get24hStatus(sub) {
+    if (!sub || !sub.whatsapp24h || !sub.whatsapp24h.expiresAt) {
+        return {
+            isActive: false,
+            statusText: 'Expired / Not Started',
+            remainingMs: 0,
+            remainingFormatted: 'Expired'
+        };
+    }
+
+    const expiresAt = new Date(sub.whatsapp24h.expiresAt).getTime();
+    const now = Date.now();
+    const remainingMs = expiresAt - now;
+
+    if (remainingMs > 0) {
+        const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+        const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        return {
+            isActive: true,
+            statusText: 'Active',
+            remainingMs,
+            remainingFormatted: `${hours}h ${minutes}m left`
+        };
+    } else {
+        return {
+            isActive: false,
+            statusText: 'Expired',
+            remainingMs: 0,
+            remainingFormatted: 'Expired'
+        };
+    }
+}
+
 // --- Helper: Read/Write Auto Push Config ---
 function getAutoConfig() {
     const defaults = {
+        whatsapp: {
+            enabled: true,
+            displayPhoneNumber: WHATSAPP_DISPLAY_PHONE_NUMBER || '15553815350',
+            defaultWelcomeText: "Hi! I want to complete my subscription and activate real-time alerts.",
+            defaultPromoText: "Hi! I saw your promotion and I want to claim the special offer.",
+            defaultReopen24hText: "Hi! Please re-open my 24h VIP alerts session."
+        },
         welcome: {
             enabled: true,
-            title: "🎉 Welcome to PushAlert!",
-            body: "Your device is now connected. You will automatically receive real-time alerts!",
-            url: "/",
+            title: "💬 Complete Your WhatsApp Activation!",
+            body: "Tap here to send a quick WhatsApp message and unlock your free 24h VIP alerts!",
+            url: "/api/redirect-wa?type=welcome",
             delaySeconds: 2
+        },
+        reengagement24h: {
+            enabled: true,
+            title: "⚡ 24h Window Expired - Re-activate Now!",
+            body: "Tap here to re-open your free 24h WhatsApp alerts with 1 click.",
+            url: "/api/redirect-wa?type=reopen"
         },
         recurring: {
             enabled: false,
@@ -83,7 +224,8 @@ function getAutoConfig() {
     }
 
     try {
-        return JSON.parse(fs.readFileSync(AUTO_CONFIG_FILE, 'utf8'));
+        const config = JSON.parse(fs.readFileSync(AUTO_CONFIG_FILE, 'utf8'));
+        return { ...defaults, ...config };
     } catch (e) {
         return defaults;
     }
@@ -107,7 +249,7 @@ function restartRecurringTimer() {
     if (config.recurring && config.recurring.enabled) {
         const intervalMs = Math.max(1, config.recurring.intervalMinutes || 60) * 60 * 1000;
         console.log(`[AUTO PUSH] Recurring timer active: Sending every ${config.recurring.intervalMinutes} minute(s)`);
-        
+
         recurringTimer = setInterval(async () => {
             console.log(`[AUTO PUSH] Triggering recurring push notification...`);
             await sendPushBroadcast({
@@ -121,7 +263,7 @@ function restartRecurringTimer() {
 }
 
 // Helper to send push to recipients
-async function sendPushBroadcast({ title, body, icon = '/icon-192.png', url = '/', target = 'all', subscriberId = null }) {
+async function sendPushBroadcast({ title, body, icon = '/icon-192.png', url = '/', target = 'all', subscriberId = null, extraData = {} }) {
     const allSubscriptions = getSubscriptions();
     if (allSubscriptions.length === 0) {
         return { total: 0, sent: 0, failed: 0, cleaned: 0 };
@@ -136,26 +278,53 @@ async function sendPushBroadcast({ title, body, icon = '/icon-192.png', url = '/
         recipients = allSubscriptions.filter(s => s.platform === 'ios');
     } else if (target === 'desktop') {
         recipients = allSubscriptions.filter(s => s.platform === 'desktop');
+    } else if (target === 'expired_24h') {
+        recipients = allSubscriptions.filter(s => !get24hStatus(s).isActive);
+    } else if (target === 'active_24h') {
+        recipients = allSubscriptions.filter(s => get24hStatus(s).isActive);
     }
-
-    const payload = JSON.stringify({
-        title,
-        body,
-        icon,
-        data: { url: url || '/', dateOfArrival: Date.now() }
-    });
 
     const results = { total: recipients.length, sent: 0, failed: 0, cleaned: 0 };
     const expiredEndpoints = [];
 
     await Promise.all(recipients.map(async (sub) => {
         try {
+            // Personalize URL with subscriber ID if needed
+            let personalizedUrl = url;
+            if (url && url.includes('/api/redirect-wa')) {
+                personalizedUrl = `${url}${url.includes('?') ? '&' : '?'}subId=${sub.id}`;
+            }
+
+            const payload = JSON.stringify({
+                title,
+                body,
+                icon,
+                data: {
+                    url: personalizedUrl || '/',
+                    subscriberId: sub.id,
+                    dateOfArrival: Date.now(),
+                    ...extraData
+                }
+            });
+
             await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload, {
                 TTL: 24 * 60 * 60
             });
             results.sent++;
         } catch (error) {
             results.failed++;
+            logError({
+                type: 'PUSH_DELIVERY_FAILED',
+                message: `Failed push delivery to ${sub.name} (${sub.platform}): ${error.message}`,
+                details: {
+                    statusCode: error.statusCode,
+                    subscriberId: sub.id,
+                    name: sub.name,
+                    platform: sub.platform,
+                    endpointPreview: sub.endpoint.substring(0, 50) + '...',
+                    body: error.body || null
+                }
+            });
             if (error.statusCode === 410 || error.statusCode === 404) {
                 expiredEndpoints.push(sub.endpoint);
                 results.cleaned++;
@@ -184,20 +353,215 @@ function getLocalIp() {
     return 'localhost';
 }
 
-// --- API Endpoints ---
+// ==========================================
+// --- META WHATSAPP WEBHOOK ENDPOINTS ---
+// ==========================================
+
+// 1. Meta Webhook Verification (GET)
+app.get('/api/whatsapp/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    console.log(`[WHATSAPP WEBHOOK] Verification probe: mode="${mode}", token="${token}"`);
+
+    if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
+        console.log('[WHATSAPP WEBHOOK] Verified successfully with Meta!');
+        return res.status(200).send(challenge);
+    } else {
+        logError({
+            type: 'WEBHOOK_VERIFY_FAILED',
+            message: `Meta webhook verification token mismatch. Received "${token}", Expected "${WHATSAPP_VERIFY_TOKEN}"`,
+            details: { mode, receivedToken: token },
+            req
+        });
+        console.error(`[WHATSAPP WEBHOOK] Verification failed! Received "${token}", Expected "${WHATSAPP_VERIFY_TOKEN}"`);
+        return res.sendStatus(403);
+    }
+});
+
+// 2. Meta Incoming Webhook Events (POST)
+// Detects incoming WhatsApp messages from customers and opens their 24h roundtrip window!
+app.post('/api/whatsapp/webhook', (req, res) => {
+    try {
+        const body = req.body;
+        console.log('[WHATSAPP WEBHOOK] Inbound event received from Meta');
+
+        if (body.object === 'whatsapp_business_account') {
+            if (body.entry && body.entry.length > 0) {
+                body.entry.forEach(entry => {
+                    (entry.changes || []).forEach(change => {
+                        const val = change.value;
+                        if (val && val.messages && val.messages.length > 0) {
+                            val.messages.forEach(msg => {
+                                const fromPhone = msg.from; // e.g. "923001234567"
+                                const msgText = msg.text ? msg.text.body : (msg.type || 'media/button');
+                                const timestamp = msg.timestamp ? parseInt(msg.timestamp) * 1000 : Date.now();
+                                const now = Date.now();
+                                const expiresAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+
+                                console.log(`\n======================================================`);
+                                console.log(`🟢 [24h WINDOW OPENED] Inbound message from: +${fromPhone}`);
+                                console.log(`💬 Message Text: "${msgText}"`);
+                                console.log(`⏳ Free 24h Customer Service Window Active Until: ${expiresAt}`);
+                                console.log(`======================================================\n`);
+
+                                // Match subscriber in subscriptions.json
+                                const subscriptions = getSubscriptions();
+                                let matched = subscriptions.find(s => s.phone && s.phone.replace(/[^0-9]/g, '') === fromPhone.replace(/[^0-9]/g, ''));
+
+                                // Fallback: If phone not yet bound, match subscriber who recently clicked the WhatsApp link
+                                if (!matched && subscriptions.length > 0) {
+                                    matched = subscriptions.slice().sort((a, b) => new Date(b.lastWaClickAt || b.lastActive || 0) - new Date(a.lastWaClickAt || a.lastActive || 0))[0];
+                                }
+
+                                if (matched) {
+                                    matched.phone = fromPhone;
+                                    matched.whatsapp24h = {
+                                        isActive: true,
+                                        openedAt: new Date(timestamp).toISOString(),
+                                        expiresAt: expiresAt,
+                                        lastMessage: msgText
+                                    };
+                                    saveSubscriptions(subscriptions);
+                                    console.log(`[SUBSCRIPTION UPDATED] 24h roundtrip activated for ${matched.name} (${matched.id})`);
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+            return res.status(200).send('EVENT_RECEIVED');
+        } else {
+            return res.sendStatus(404);
+        }
+    } catch (e) {
+        logError({
+            type: 'WEBHOOK_PROCESS_ERROR',
+            message: `Error processing Meta WhatsApp webhook event: ${e.message}`,
+            details: { stack: e.stack, body: req.body },
+            req
+        });
+        console.error('[WHATSAPP WEBHOOK ERROR]', e);
+        return res.status(200).send('ERROR_HANDLED');
+    }
+});
+
+// 3. Smart WhatsApp Deep Link & Click Tracker Redirect
+app.get('/api/redirect-wa', (req, res) => {
+    const { type = 'welcome', subId, promoText } = req.query;
+    const autoConfig = getAutoConfig();
+
+    let text = autoConfig.whatsapp?.defaultWelcomeText || 'Hi! I want to complete my subscription and activate real-time alerts.';
+    if (type === 'reopen') {
+        text = autoConfig.whatsapp?.defaultReopen24hText || 'Hi! Please re-open my 24h VIP alerts session.';
+    } else if (type === 'promo') {
+        text = promoText || autoConfig.whatsapp?.defaultPromoText || 'Hi! I saw your promotion and I want to claim the special offer.';
+    }
+
+    if (subId) {
+        const subs = getSubscriptions();
+        const sub = subs.find(s => s.id === subId);
+        if (sub) {
+            sub.lastWaClickAt = new Date().toISOString();
+            saveSubscriptions(subs);
+            console.log(`[WA CLICK] Subscriber ${sub.name} tapped WhatsApp notification (${type})`);
+        }
+    }
+
+    const waLink = getWhatsAppDeepLink(text);
+    return res.redirect(waLink);
+});
+
+// 4. WhatsApp Configuration & Webhook Status
+app.get('/api/whatsapp/status', (req, res) => {
+    const subscriptions = getSubscriptions();
+    let active24h = 0;
+    let expired24h = 0;
+
+    subscriptions.forEach(s => {
+        if (get24hStatus(s).isActive) {
+            active24h++;
+        } else {
+            expired24h++;
+        }
+    });
+
+    const localIp = getLocalIp();
+    const config = getAutoConfig();
+
+    res.json({
+        configured: Boolean(PHONE_NUMBER_ID && SYSTEM_TOKEN),
+        waba_id: WABA_ID,
+        phone_number_id: PHONE_NUMBER_ID,
+        display_phone_number: WHATSAPP_DISPLAY_PHONE_NUMBER,
+        verify_token: WHATSAPP_VERIFY_TOKEN,
+        webhook_path: '/api/whatsapp/webhook',
+        full_webhook_url_example: `https://YOUR-DOMAIN-OR-TUNNEL.loca.lt/api/whatsapp/webhook`,
+        active24h,
+        expired24h,
+        totalSubscribers: subscriptions.length,
+        config: config.whatsapp || {}
+    });
+});
+
+// 5. Send 24h Re-Open Push Notification Broadcast (To reopen expired 24h window)
+app.post('/api/send-24h-reopen', async (req, res) => {
+    const { subscriberId = null, target = 'expired_24h' } = req.body;
+    const config = getAutoConfig();
+    const cleanNumber = (WHATSAPP_DISPLAY_PHONE_NUMBER || '15553815350').replace(/[^0-9]/g, '');
+    const reopenText = config.whatsapp?.defaultReopen24hText || 'Hi! Please re-open my 24h VIP alerts session.';
+
+    // Direct wa.me link with prefilled text
+    const waUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(reopenText)}`;
+
+    const title = config.reengagement24h?.title || '⚡ 24h WhatsApp Session Expired!';
+    const body = config.reengagement24h?.body || 'Tap here to send 1 quick message & re-open your free 24h WhatsApp alerts!';
+
+    const results = await sendPushBroadcast({
+        title,
+        body,
+        icon: '/icon-192.png',
+        url: `/api/redirect-wa?type=reopen`,
+        target,
+        subscriberId,
+        extraData: {
+            is24hReopen: true,
+            waUrl
+        }
+    });
+
+    res.json({
+        success: true,
+        message: `24h Re-Open Push Notification sent to ${results.sent} device(s)!`,
+        results
+    });
+});
+
+// ==========================================
+// --- STANDARD WEB PUSH API ENDPOINTS ---
+// ==========================================
 
 // 1. Get Public VAPID Key for client subscription
 app.get('/api/config', (req, res) => {
     res.json({
-        publicKey: vapidKeys.publicKey
+        publicKey: vapidKeys.publicKey,
+        whatsappNumber: WHATSAPP_DISPLAY_PHONE_NUMBER,
+        waWelcomeLink: getWhatsAppDeepLink(getAutoConfig().whatsapp?.defaultWelcomeText)
     });
 });
 
-// 2. Subscribe a new device (Android / iOS / Desktop) with Auto Welcome Push
+// 2. Subscribe a new device with Auto WhatsApp Welcome Push
 app.post('/api/subscribe', (req, res) => {
-    const { subscription, deviceName, platform, userAgent } = req.body;
+    const { subscription, deviceName, platform, userAgent, phone } = req.body;
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
+        logError({
+            type: 'INVALID_SUBSCRIPTION_PAYLOAD',
+            message: 'Invalid subscription object received: missing endpoint or keys',
+            details: req.body,
+            req
+        });
         return res.status(400).json({ error: 'Invalid subscription object' });
     }
 
@@ -211,9 +575,15 @@ app.post('/api/subscribe', (req, res) => {
         userAgent: userAgent || req.headers['user-agent'] || '',
         endpoint: subscription.endpoint,
         keys: subscription.keys,
+        phone: phone || (existingIndex !== -1 ? subscriptions[existingIndex].phone : null),
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
         subscribedAt: existingIndex !== -1 ? subscriptions[existingIndex].subscribedAt : new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        lastActive: new Date().toISOString(),
+        lastWaClickAt: null,
+        whatsapp24h: existingIndex !== -1 && subscriptions[existingIndex].whatsapp24h ? subscriptions[existingIndex].whatsapp24h : {
+            isActive: false,
+            expiresAt: null
+        }
     };
 
     if (existingIndex !== -1) {
@@ -226,19 +596,24 @@ app.post('/api/subscribe', (req, res) => {
 
     saveSubscriptions(subscriptions);
 
-    // --- AUTO PUSH: Send Automatic Welcome Notification ---
+    // --- AUTO PUSH: Send Welcome Notification that leads directly into WhatsApp ---
     const autoConfig = getAutoConfig();
     if (autoConfig.welcome && autoConfig.welcome.enabled) {
         const delayMs = (autoConfig.welcome.delaySeconds || 2) * 1000;
-        console.log(`[AUTO PUSH] Scheduling automatic welcome push in ${delayMs}ms for ${subscriptionEntry.name}`);
+        console.log(`[AUTO PUSH] Scheduling WhatsApp welcome push in ${delayMs}ms for ${subscriptionEntry.name}`);
 
         setTimeout(async () => {
             try {
+                const welcomeUrl = `/api/redirect-wa?type=welcome&subId=${subscriptionEntry.id}`;
                 const payload = JSON.stringify({
-                    title: autoConfig.welcome.title || '🎉 Welcome to PushAlert!',
-                    body: autoConfig.welcome.body || 'You have successfully subscribed to push notifications.',
+                    title: autoConfig.welcome.title || '💬 Complete Your WhatsApp Activation!',
+                    body: autoConfig.welcome.body || 'Tap here to send a quick WhatsApp message and unlock your 24h VIP alerts!',
                     icon: '/icon-192.png',
-                    data: { url: autoConfig.welcome.url || '/' }
+                    data: {
+                        url: welcomeUrl,
+                        subscriberId: subscriptionEntry.id,
+                        isWhatsAppWelcome: true
+                    }
                 });
 
                 await webpush.sendNotification({
@@ -246,18 +621,23 @@ app.post('/api/subscribe', (req, res) => {
                     keys: subscriptionEntry.keys
                 }, payload);
 
-                console.log(`[AUTO PUSH SUCCESS] Auto welcome notification sent to ${subscriptionEntry.name}`);
+                console.log(`[AUTO PUSH SUCCESS] WhatsApp welcome push notification sent to ${subscriptionEntry.name}`);
             } catch (err) {
-                console.error(`[AUTO PUSH ERROR] Failed auto welcome notification:`, err.message);
+                logError({
+                    type: 'AUTO_WELCOME_PUSH_FAILED',
+                    message: `Failed auto welcome push for ${subscriptionEntry.name}: ${err.message}`,
+                    details: { stack: err.stack, subscriberId: subscriptionEntry.id }
+                });
+                console.error(`[AUTO PUSH ERROR] Failed auto welcome push:`, err.message);
             }
         }, delayMs);
     }
 
     res.status(201).json({
         success: true,
-        message: 'Device subscribed successfully! Automatic welcome push scheduled.',
+        message: 'Device subscribed successfully! Welcome push leading to WhatsApp scheduled.',
         subscriber: subscriptionEntry,
-        autoWelcomeScheduled: autoConfig.welcome && autoConfig.welcome.enabled
+        waLink: getWhatsAppDeepLink(autoConfig.whatsapp?.defaultWelcomeText)
     });
 });
 
@@ -280,24 +660,37 @@ app.post('/api/unsubscribe', (req, res) => {
     });
 });
 
-// 4. List all subscribers (for send panel)
+// 4. List all subscribers with 24-Hour Roundtrip Live Status
 app.get('/api/subscriptions', (req, res) => {
     const subscriptions = getSubscriptions();
-    const sanitized = subscriptions.map(sub => ({
-        id: sub.id,
-        name: sub.name,
-        platform: sub.platform,
-        endpointPreview: sub.endpoint.substring(0, 45) + '...',
-        subscribedAt: sub.subscribedAt,
-        lastActive: sub.lastActive
-    }));
+    const sanitized = subscriptions.map(sub => {
+        const roundtrip = get24hStatus(sub);
+        return {
+            id: sub.id,
+            name: sub.name,
+            platform: sub.platform,
+            phone: sub.phone || null,
+            endpointPreview: sub.endpoint.substring(0, 45) + '...',
+            subscribedAt: sub.subscribedAt,
+            lastActive: sub.lastActive,
+            lastWaClickAt: sub.lastWaClickAt || null,
+            whatsapp24h: {
+                isActive: roundtrip.isActive,
+                statusText: roundtrip.statusText,
+                remainingFormatted: roundtrip.remainingFormatted,
+                remainingMs: roundtrip.remainingMs,
+                expiresAt: sub.whatsapp24h?.expiresAt || null,
+                lastMessage: sub.whatsapp24h?.lastMessage || null
+            }
+        };
+    });
     res.json({
         total: subscriptions.length,
         subscribers: sanitized
     });
 });
 
-// 5. Send Manual Push Notification
+// 5. Send Manual Push Notification (With Click-to-WhatsApp Promo Support)
 app.post('/api/send-notification', async (req, res) => {
     const {
         title = 'New Notification',
@@ -305,59 +698,94 @@ app.post('/api/send-notification', async (req, res) => {
         icon = '/icon-192.png',
         url = '/',
         target = 'all',
-        subscriberId = null
+        subscriberId = null,
+        openWhatsApp = false,
+        whatsappText = null
     } = req.body;
 
     const allSubscriptions = getSubscriptions();
     if (allSubscriptions.length === 0) {
+        logError({
+            type: 'NO_SUBSCRIBERS_FOUND',
+            message: 'Notification send failed: no subscribers found in subscriptions.json',
+            req
+        });
         return res.status(400).json({
             success: false,
-            message: 'No subscribers found in subscriptions.json! Please subscribe a device first.'
+            message: 'No subscribers found! Please subscribe a device first.'
         });
     }
 
-    const results = await sendPushBroadcast({
-        title,
-        body,
-        icon,
-        url,
-        target,
-        subscriberId
-    });
+    let finalUrl = url;
+    if (openWhatsApp) {
+        const text = whatsappText || getAutoConfig().whatsapp?.defaultPromoText || 'Hi! I saw your promotion and I want to claim the special offer.';
+        finalUrl = `/api/redirect-wa?type=promo&promoText=${encodeURIComponent(text)}`;
+    }
 
-    res.json({
-        success: true,
-        message: `Notification sent to ${results.sent} of ${results.total} device(s).`,
-        results
-    });
+    try {
+        const results = await sendPushBroadcast({
+            title,
+            body,
+            icon,
+            url: finalUrl,
+            target,
+            subscriberId,
+            extraData: {
+                openWhatsApp: Boolean(openWhatsApp)
+            }
+        });
+
+        res.json({
+            success: true,
+            message: `Notification sent to ${results.sent} of ${results.total} device(s). ${openWhatsApp ? '(Opens WhatsApp on click)' : ''}`,
+            results
+        });
+    } catch (err) {
+        logError({
+            type: 'SEND_NOTIFICATION_EXCEPTION',
+            message: `Failed to broadcast notification: ${err.message}`,
+            details: { stack: err.stack },
+            req
+        });
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
 });
 
-// 6. Schedule Auto Notification (Timer test / Background test)
+// 6. Schedule Auto Notification
 app.post('/api/schedule-auto', (req, res) => {
     const {
         seconds = 5,
         title = '⏱️ Auto Scheduled Notification',
         body = 'This notification arrived automatically after a timer countdown!',
         url = '/',
-        subscriberId = null
+        subscriberId = null,
+        openWhatsApp = false
     } = req.body;
 
     const delayMs = Math.max(1, parseInt(seconds)) * 1000;
     console.log(`[SCHEDULED AUTO] Notification scheduled in ${delayMs / 1000} seconds...`);
+
+    let finalUrl = url;
+    if (openWhatsApp) {
+        finalUrl = `/api/redirect-wa?type=promo`;
+    }
 
     setTimeout(async () => {
         console.log(`[SCHEDULED AUTO] Triggering scheduled notification now!`);
         await sendPushBroadcast({
             title,
             body,
-            url,
+            url: finalUrl,
             subscriberId
         });
     }, delayMs);
 
     res.json({
         success: true,
-        message: `Auto notification scheduled! It will arrive in ${seconds} seconds. You can close or minimize the browser now.`
+        message: `Auto notification scheduled! It will arrive in ${seconds} seconds.`
     });
 });
 
@@ -370,9 +798,17 @@ app.get('/api/auto-config', (req, res) => {
 app.post('/api/auto-config', (req, res) => {
     const current = getAutoConfig();
     const updated = {
+        whatsapp: {
+            ...current.whatsapp,
+            ...(req.body.whatsapp || {})
+        },
         welcome: {
             ...current.welcome,
             ...(req.body.welcome || {})
+        },
+        reengagement24h: {
+            ...current.reengagement24h,
+            ...(req.body.reengagement24h || {})
         },
         recurring: {
             ...current.recurring,
@@ -383,36 +819,94 @@ app.post('/api/auto-config', (req, res) => {
     saveAutoConfig(updated);
     res.json({
         success: true,
-        message: 'Auto push settings saved successfully!',
+        message: 'Push & WhatsApp settings saved successfully!',
         config: updated
     });
 });
 
-// Shortcut routes
+// Shortcut route
 app.get('/send', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'send.html'));
 });
 
-// Initialize recurring timer on server boot
+// --- ERROR LOGS API ENDPOINTS ---
+
+// 1. Get All Error Logs
+app.get('/api/error-logs', (req, res) => {
+    const logs = getErrorLogs();
+    res.json({
+        total: logs.length,
+        logs
+    });
+});
+
+// 2. Clear Error Logs
+app.post('/api/error-logs/clear', (req, res) => {
+    try {
+        fs.writeFileSync(ERROR_LOGS_FILE, JSON.stringify([], null, 2), 'utf8');
+        res.json({
+            success: true,
+            message: 'All error logs have been cleared successfully!'
+        });
+    } catch (e) {
+        logError({
+            type: 'CLEAR_LOGS_FAILED',
+            message: e.message,
+            details: { stack: e.stack }
+        });
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Global Express Error Middleware
+app.use((err, req, res, next) => {
+    logError({
+        type: 'EXPRESS_UNHANDLED_ERROR',
+        message: err.message,
+        details: { stack: err.stack },
+        req
+    });
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+});
+
+// Process Uncaught Exceptions & Rejections
+process.on('uncaughtException', (err) => {
+    logError({
+        type: 'UNCAUGHT_EXCEPTION',
+        message: err.message,
+        details: { stack: err.stack }
+    });
+});
+
+process.on('unhandledRejection', (reason) => {
+    logError({
+        type: 'UNHANDLED_REJECTION',
+        message: reason?.message || String(reason),
+        details: reason?.stack ? { stack: reason.stack } : { reason }
+    });
+});
+
+// Initialize
 restartRecurringTimer();
+syncWhatsAppBusinessProfile();
 
 // Start Server
 app.listen(PORT, '0.0.0.0', () => {
     const localIp = getLocalIp();
     console.log(`\n======================================================`);
-    console.log(`🚀 Push Notification Server is running on Port ${PORT}!`);
-    console.log(`🤖 Auto Push Notifications: ACTIVE`);
+    console.log(`🚀 Push Notification + WhatsApp 24h Server ACTIVE on Port ${PORT}!`);
     console.log(`------------------------------------------------------`);
-    console.log(`📱 1. Client/Subscribe Page (Android & iOS):`);
+    console.log(`📱 1. Client / Subscribe Page:`);
     console.log(`   - Localhost:    http://localhost:${PORT}`);
     console.log(`   - Mobile Wi-Fi: http://${localIp}:${PORT}`);
     console.log(``);
-    console.log(`📤 2. Send Notification Dashboard:`);
+    console.log(`📤 2. Send & 24h Roundtrip Dashboard:`);
     console.log(`   - Localhost:    http://localhost:${PORT}/send.html`);
     console.log(`   - Mobile Wi-Fi: http://${localIp}:${PORT}/send.html`);
     console.log(``);
-    console.log(`💾 Data stored in: subscriptions.json`);
-    console.log(`⚙️ Auto config in: auto-config.json`);
-    console.log(`🔑 VAPID Keys in:  vapid-keys.json`);
+    console.log(`🔗 3. Meta WhatsApp Webhook URL:`);
+    console.log(`   - Path:         /api/whatsapp/webhook`);
+    console.log(`   - Verify Token: ${WHATSAPP_VERIFY_TOKEN}`);
+    console.log(`   - Phone Number: +${WHATSAPP_DISPLAY_PHONE_NUMBER}`);
     console.log(`======================================================\n`);
 });

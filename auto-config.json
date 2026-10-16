@@ -1,10 +1,23 @@
 {
+  "whatsapp": {
+    "enabled": true,
+    "displayPhoneNumber": "15553815350",
+    "defaultWelcomeText": "Hi! I want to complete my subscription and activate real-time alerts.",
+    "defaultPromoText": "Hi! I saw your promotion and I want to claim the special offer.",
+    "defaultReopen24hText": "Hi! Please re-open my 24h VIP alerts session."
+  },
   "welcome": {
     "enabled": true,
-    "title": "🎉 Welcome to PushAlert!",
-    "body": "Your device is now connected. You will automatically receive real-time alerts!",
-    "url": "/",
+    "title": "💬 Complete Your WhatsApp Activation!",
+    "body": "Tap here to send a quick WhatsApp message and unlock your free 24h VIP alerts!",
+    "url": "/api/redirect-wa?type=welcome",
     "delaySeconds": 2
+  },
+  "reengagement24h": {
+    "enabled": true,
+    "title": "⚡ 24h Window Expired - Re-activate Now!",
+    "body": "Tap here to re-open your free 24h WhatsApp alerts with 1 click.",
+    "url": "/api/redirect-wa?type=reopen"
   },
   "recurring": {
     "enabled": false,

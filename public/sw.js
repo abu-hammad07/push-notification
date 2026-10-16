@@ -55,7 +55,10 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+    let targetUrl = (event.notification.data && event.notification.data.url) || '/';
+    if (targetUrl.startsWith('/')) {
+        targetUrl = self.location.origin + targetUrl;
+    }
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
