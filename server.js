@@ -19,6 +19,7 @@ const VAPID_FILE = path.join(__dirname, 'vapid-keys.json');
 const SUBSCRIPTIONS_FILE = path.join(__dirname, 'subscriptions.json');
 const AUTO_CONFIG_FILE = path.join(__dirname, 'auto-config.json');
 const ERROR_LOGS_FILE = path.join(__dirname, 'error-logs.json');
+const WA_MESSAGES_FILE = path.join(__dirname, 'whatsapp-messages.json');
 
 // --- Helper: Read/Write Error Logs JSON ---
 function getErrorLogs() {
@@ -59,6 +60,57 @@ function logError({ type = 'GENERAL_ERROR', message, details = null, req = null 
         fs.writeFileSync(ERROR_LOGS_FILE, JSON.stringify(logs, null, 2), 'utf8');
     } catch (err) {
         console.error('Failed to write to error-logs.json:', err.message);
+    }
+
+    return newEntry;
+}
+
+// --- Helper: Read/Write WhatsApp Messages JSON ---
+function getWaMessages() {
+    if (!fs.existsSync(WA_MESSAGES_FILE)) {
+        fs.writeFileSync(WA_MESSAGES_FILE, JSON.stringify([]));
+        return [];
+    }
+    try {
+        const data = fs.readFileSync(WA_MESSAGES_FILE, 'utf8');
+        return JSON.parse(data) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function logWaMessage({
+    direction = 'incoming', // 'incoming' | 'outgoing'
+    from = null,
+    to = null,
+    senderName = 'Unknown Customer',
+    text = '',
+    timestamp = new Date().toISOString(),
+    status = 'received', // 'received' | 'sent' | 'failed'
+    rawId = null,
+    error = null
+}) {
+    const logs = getWaMessages();
+    const newEntry = {
+        id: 'wamsg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        direction,
+        from: from ? String(from).replace(/[^0-9]/g, '') : null,
+        to: to ? String(to).replace(/[^0-9]/g, '') : null,
+        senderName: senderName || 'Unknown Customer',
+        text: text || '',
+        timestamp: typeof timestamp === 'number' ? new Date(timestamp).toISOString() : (timestamp || new Date().toISOString()),
+        status,
+        rawId,
+        error: error ? (typeof error === 'object' ? error : { message: String(error) }) : null
+    };
+
+    logs.unshift(newEntry);
+    if (logs.length > 500) logs.pop();
+
+    try {
+        fs.writeFileSync(WA_MESSAGES_FILE, JSON.stringify(logs, null, 2), 'utf8');
+    } catch (err) {
+        console.error('Failed to write to whatsapp-messages.json:', err.message);
     }
 
     return newEntry;
@@ -400,8 +452,17 @@ app.post('/api/whatsapp/webhook', (req, res) => {
                                 const now = Date.now();
                                 const expiresAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
 
+                                // Extract contact profile name if Meta provided it
+                                let contactName = 'WhatsApp Customer';
+                                if (val.contacts && val.contacts.length > 0) {
+                                    const c = val.contacts.find(cnt => cnt.wa_id === fromPhone) || val.contacts[0];
+                                    if (c && c.profile && c.profile.name) {
+                                        contactName = c.profile.name;
+                                    }
+                                }
+
                                 console.log(`\n======================================================`);
-                                console.log(`🟢 [24h WINDOW OPENED] Inbound message from: +${fromPhone}`);
+                                console.log(`🟢 [24h WINDOW OPENED] Inbound message from: +${fromPhone} (${contactName})`);
                                 console.log(`💬 Message Text: "${msgText}"`);
                                 console.log(`⏳ Free 24h Customer Service Window Active Until: ${expiresAt}`);
                                 console.log(`======================================================\n`);
@@ -425,7 +486,22 @@ app.post('/api/whatsapp/webhook', (req, res) => {
                                     };
                                     saveSubscriptions(subscriptions);
                                     console.log(`[SUBSCRIPTION UPDATED] 24h roundtrip activated for ${matched.name} (${matched.id})`);
+                                    if (!contactName || contactName === 'WhatsApp Customer') {
+                                        contactName = matched.name;
+                                    }
                                 }
+
+                                // 🟢 Record inbound message to whatsapp-messages.json logs
+                                logWaMessage({
+                                    direction: 'incoming',
+                                    from: fromPhone,
+                                    to: WHATSAPP_DISPLAY_PHONE_NUMBER,
+                                    senderName: contactName,
+                                    text: msgText,
+                                    timestamp: timestamp,
+                                    status: 'received',
+                                    rawId: msg.id || null
+                                });
                             });
                         }
                     });
@@ -536,6 +612,144 @@ app.post('/api/send-24h-reopen', async (req, res) => {
         message: `24h Re-Open Push Notification sent to ${results.sent} device(s)!`,
         results
     });
+});
+
+// 6. Direct Meta WhatsApp Message Sender
+async function sendDirectWhatsAppMessage(toPhone, messageText) {
+    if (!PHONE_NUMBER_ID || !SYSTEM_TOKEN) {
+        throw new Error('Meta credentials (phone_number_id or system_token) not configured in .env');
+    }
+
+    const cleanTo = (toPhone || '').replace(/[^0-9]/g, '');
+    if (!cleanTo || cleanTo.length < 8) {
+        throw new Error('Please enter a valid phone number with country code (e.g. 923001234567 or 15553815350).');
+    }
+
+    if (!messageText || !messageText.trim()) {
+        throw new Error('Message text cannot be empty.');
+    }
+
+    const payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanTo,
+        type: 'text',
+        text: {
+            preview_url: false,
+            body: messageText.trim()
+        }
+    };
+
+    const res = await fetch(`https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/messages`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${SYSTEM_TOKEN}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        const errMsg = data.error?.message || `Meta API error (${res.status})`;
+        logWaMessage({
+            direction: 'outgoing',
+            from: WHATSAPP_DISPLAY_PHONE_NUMBER,
+            to: cleanTo,
+            senderName: 'You (Agentifire)',
+            text: messageText,
+            status: 'failed',
+            error: data.error || errMsg
+        });
+        logError({
+            type: 'WA_SEND_FAILED',
+            message: `Failed to send WhatsApp message to +${cleanTo}: ${errMsg}`,
+            details: data.error
+        });
+        return { success: false, error: errMsg, details: data.error };
+    }
+
+    const msgId = data.messages && data.messages[0] ? data.messages[0].id : null;
+    logWaMessage({
+        direction: 'outgoing',
+        from: WHATSAPP_DISPLAY_PHONE_NUMBER,
+        to: cleanTo,
+        senderName: 'You (Agentifire)',
+        text: messageText,
+        status: 'sent',
+        rawId: msgId
+    });
+
+    return {
+        success: true,
+        messageId: msgId,
+        data
+    };
+}
+
+// 7. Get All WhatsApp Messages (Inbound & Outbound Logs)
+app.get('/api/whatsapp/messages', (req, res) => {
+    const messages = getWaMessages();
+    const incomingCount = messages.filter(m => m.direction === 'incoming').length;
+    const outgoingCount = messages.filter(m => m.direction === 'outgoing').length;
+    res.json({
+        total: messages.length,
+        incomingCount,
+        outgoingCount,
+        messages
+    });
+});
+
+// 8. Send Direct WhatsApp Test Message
+app.post('/api/whatsapp/send-message', async (req, res) => {
+    const { to, message } = req.body;
+    try {
+        const result = await sendDirectWhatsAppMessage(to, message);
+        if (result.success) {
+            return res.json({
+                success: true,
+                message: `WhatsApp message delivered successfully to +${(to || '').replace(/[^0-9]/g, '')}!`,
+                messageId: result.messageId,
+                data: result.data
+            });
+        } else {
+            return res.status(400).json({
+                success: false,
+                error: result.error,
+                details: result.details
+            });
+        }
+    } catch (e) {
+        logError({
+            type: 'WA_SEND_EXCEPTION',
+            message: e.message,
+            details: { to, message, stack: e.stack },
+            req
+        });
+        return res.status(500).json({
+            success: false,
+            error: e.message
+        });
+    }
+});
+
+// 9. Clear WhatsApp Message Logs
+app.post('/api/whatsapp/messages/clear', (req, res) => {
+    try {
+        fs.writeFileSync(WA_MESSAGES_FILE, JSON.stringify([], null, 2), 'utf8');
+        res.json({
+            success: true,
+            message: 'All WhatsApp message logs have been cleared!'
+        });
+    } catch (e) {
+        logError({
+            type: 'WA_CLEAR_LOGS_FAILED',
+            message: e.message,
+            details: { stack: e.stack }
+        });
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // ==========================================

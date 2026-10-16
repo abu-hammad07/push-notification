@@ -19,5 +19,65 @@
       "expiresAt": "2026-10-17T07:15:11.674Z",
       "lastMessage": "Hi! I want to complete my subscription"
     }
+  },
+  {
+    "id": "sub_1792141090554_s01357",
+    "name": "My PC",
+    "platform": "desktop",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/f9t60LzRr4A:APA91bH022U4lSixXHXbJ0wB6Edd-nwLL_EZuNKsUBK7WODApKr3lVzVawlLQv6QRkHOsMl2BM0HHPeGiWMsLkp4XW9ePkvXMw-WWxtKvi0RYAIPg8sb4lL2PJ-ENQbVNOmg29SAkV_G",
+    "keys": {
+      "p256dh": "BJzStEuLZsrIR7BHYCY5ETJvUMr8D9yPdc0loKiNCghA1Hg0BcMBC7-4baLYvw9Nkr6-ZFLr0hCFNWPhoCoZwLg",
+      "auth": "3S0IHSRWshCoq_b0u6PpQQ"
+    },
+    "phone": "923131192139",
+    "ip": "127.0.0.1",
+    "subscribedAt": "2026-10-16T08:58:10.554Z",
+    "lastActive": "2026-10-16T08:58:10.554Z",
+    "lastWaClickAt": null,
+    "whatsapp24h": {
+      "isActive": false,
+      "expiresAt": null
+    }
+  },
+  {
+    "id": "sub_1792141090645_zqspom",
+    "name": "My PC",
+    "platform": "desktop",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/fgs_GcAXaZA:APA91bEusAb20zVNICHY_374xVSTDEQM6TGGl_cz_CbzVxDZ3SJ5IoLmR5fZvvCUtgwF3mWxiZpKU6smqkP4xbzEUgjZ0XesYR00BcRRrJVem8NuWHNGVc-qZ_EacvONth921C5jaYuJ",
+    "keys": {
+      "p256dh": "BPa9pxlcG8V-2YlKqszWeHLjHPu5n7bs4-GSi-C1iV_N9EGx0DJrCyrQrKDjXZMr1zWr8yX31gx5Xtcka-d6ZMI",
+      "auth": "u3x2RAKA4ANOYsPQX7dUcg"
+    },
+    "phone": "923131192139",
+    "ip": "127.0.0.1",
+    "subscribedAt": "2026-10-16T08:58:10.645Z",
+    "lastActive": "2026-10-16T08:58:10.645Z",
+    "lastWaClickAt": null,
+    "whatsapp24h": {
+      "isActive": false,
+      "expiresAt": null
+    }
+  },
+  {
+    "id": "sub_1792141090950_uwao1v",
+    "name": "My PC",
+    "platform": "desktop",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/fT4be6L4eDI:APA91bGI0LV0vDTkGOGbelpLezmTOeLyWcJut8ZtFFS455ZQLU1r4rEnT7hiXyRbrbzdNnzNjZ3Hre4KW9Yn2HcdbE4GfxQQeEN2YRlssQKhN2ZQY1vMjLfBAS8wrqKr4lBCWTum2Aw8",
+    "keys": {
+      "p256dh": "BC8b4BisJ-Kaz1zf7BNb2dcO-uia2PvbiC7NbFZ3iWIMfloFdJtpuT9vHunb5-umZJgUSMPdY-M5969zMgDajz4",
+      "auth": "GAYjaYinj94XntZ2gsTj4w"
+    },
+    "phone": "923131192139",
+    "ip": "127.0.0.1",
+    "subscribedAt": "2026-10-16T08:58:10.951Z",
+    "lastActive": "2026-10-16T08:58:10.951Z",
+    "lastWaClickAt": null,
+    "whatsapp24h": {
+      "isActive": false,
+      "expiresAt": null
+    }
   }
 ]

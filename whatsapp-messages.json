@@ -1,0 +1,26 @@
+[
+  {
+    "id": "wamsg_1792141173259_fj54w",
+    "direction": "outgoing",
+    "from": "15553815350",
+    "to": "923131192139",
+    "senderName": "You (Agentifire)",
+    "text": "Hi! This is a test message from Agentifire WhatsApp 24h roundtrip system.",
+    "timestamp": "2026-10-16T08:59:33.258Z",
+    "status": "sent",
+    "rawId": "wamid.HBgMOTIzMTMxMTkyMTM5FQIAERgSRUVFRDVDNkNBREQzMzVFRUY4AA==",
+    "error": null
+  },
+  {
+    "id": "wamsg_1792141015679_7or1d",
+    "direction": "outgoing",
+    "from": "15553815350",
+    "to": "923131192139",
+    "senderName": "You (Agentifire)",
+    "text": "Hello Abu Hammad! Testing direct WhatsApp Cloud API message from Agentifire Push Dashboard.",
+    "timestamp": "2026-10-16T08:56:55.679Z",
+    "status": "sent",
+    "rawId": "wamid.HBgMOTIzMTMxMTkyMTM5FQIAERgSNDIyMzhFNDJCNkFFQUEzOTAwAA==",
+    "error": null
+  }
+]

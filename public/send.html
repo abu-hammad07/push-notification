@@ -40,14 +40,15 @@
             background-color: var(--bg-dark);
             color: var(--text-main);
             min-height: 100vh;
-            padding: 24px 20px;
+            padding: 12px 14px;
+            font-size: 13.5px;
             background-image: 
-                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
-                radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.10) 0%, transparent 40%);
+                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.10) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
         }
 
         .wrapper {
-            max-width: 1200px;
+            max-width: 1240px;
             margin: 0 auto;
         }
 
@@ -56,46 +57,46 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
-            gap: 16px;
+            gap: 10px;
         }
 
         .header-title-box {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 10px;
         }
 
         .header-icon {
-            width: 44px;
-            height: 44px;
+            width: 36px;
+            height: 36px;
             background: linear-gradient(135deg, var(--primary), var(--purple));
-            border-radius: 14px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
-            box-shadow: 0 4px 16px var(--primary-glow);
+            font-size: 1.1rem;
+            box-shadow: 0 3px 10px var(--primary-glow);
         }
 
         h1 {
-            font-size: 1.7rem;
+            font-size: 1.25rem;
             font-weight: 800;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.3px;
             background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .header-sub {
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
         }
 
         .header-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
         }
 
@@ -103,50 +104,50 @@
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid var(--card-border);
             color: #cbd5e1;
-            padding: 10px 16px;
-            border-radius: 12px;
-            font-size: 0.9rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
             font-weight: 600;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             transition: all 0.2s ease;
         }
 
         .btn-link:hover {
             background: rgba(255, 255, 255, 0.12);
             color: #fff;
-            transform: translateY(-1px);
         }
 
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
         }
 
         .stat-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 20px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 10px 14px;
             backdrop-filter: blur(12px);
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 10px;
         }
 
         .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.4rem;
+            font-size: 1.1rem;
+            flex-shrink: 0;
         }
 
         .stat-icon.total { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
@@ -155,44 +156,46 @@
         .stat-icon.auto { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
 
         .stat-number {
-            font-size: 1.7rem;
+            font-size: 1.25rem;
             font-weight: 800;
             line-height: 1.1;
             color: #fff;
         }
 
         .stat-title {
-            font-size: 0.85rem;
+            font-size: 0.72rem;
             color: var(--text-muted);
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         /* Nav Tabs */
         .tabs-nav {
             display: flex;
-            gap: 10px;
-            margin-bottom: 24px;
+            gap: 6px;
+            margin-bottom: 14px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding-bottom: 12px;
+            padding-bottom: 8px;
+            overflow-x: auto;
         }
 
         .tab-btn {
             background: transparent;
             border: 1px solid transparent;
             color: var(--text-muted);
-            padding: 10px 18px;
-            border-radius: 12px;
-            font-size: 0.95rem;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            white-space: nowrap;
             transition: all 0.2s ease;
         }
 
         .tab-btn.active {
-            background: rgba(99, 102, 241, 0.15);
+            background: rgba(99, 102, 241, 0.18);
             border-color: rgba(99, 102, 241, 0.35);
             color: #fff;
         }
@@ -215,8 +218,8 @@
         .content-grid {
             display: grid;
             grid-template-columns: 1.3fr 1fr;
-            gap: 24px;
-            margin-bottom: 32px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         @media (max-width: 960px) {
@@ -229,33 +232,33 @@
         .card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 28px;
-            backdrop-filter: blur(16px);
+            border-radius: 14px;
+            padding: 16px;
+            backdrop-filter: blur(14px);
         }
 
         .card-title {
-            font-size: 1.25rem;
+            font-size: 0.98rem;
             font-weight: 700;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         /* Form elements */
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 11px;
         }
 
         .form-label {
             display: block;
-            font-size: 0.82rem;
+            font-size: 0.72rem;
             font-weight: 700;
             color: #cbd5e1;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
         }
 
         .form-input, .form-textarea, .form-select {
@@ -263,35 +266,35 @@
             background: var(--input-bg);
             border: 1px solid rgba(255, 255, 255, 0.12);
             color: #fff;
-            padding: 13px 16px;
-            border-radius: 14px;
-            font-size: 0.95rem;
+            padding: 8px 11px;
+            border-radius: 8px;
+            font-size: 0.82rem;
             outline: none;
             transition: all 0.2s ease;
         }
 
         .form-textarea {
             resize: vertical;
-            min-height: 85px;
+            min-height: 60px;
         }
 
         .form-input:focus, .form-textarea:focus, .form-select:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-glow);
+            box-shadow: 0 0 0 2px var(--primary-glow);
         }
 
         .input-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px;
+            gap: 10px;
         }
 
         /* Radio Target Buttons */
         .target-options {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 14px;
+            gap: 6px;
+            margin-bottom: 10px;
         }
 
         @media (max-width: 600px) {
@@ -315,23 +318,23 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 12px 8px;
+            padding: 8px 6px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            font-size: 0.8rem;
+            border-radius: 8px;
+            font-size: 0.74rem;
             font-weight: 600;
             cursor: pointer;
             text-align: center;
-            gap: 4px;
+            gap: 3px;
             transition: all 0.2s ease;
         }
 
         .target-option input:checked + .target-label {
-            background: rgba(99, 102, 241, 0.18);
+            background: rgba(99, 102, 241, 0.20);
             border-color: var(--primary);
             color: #fff;
-            box-shadow: 0 0 14px var(--primary-glow);
+            box-shadow: 0 0 10px var(--primary-glow);
         }
 
         /* Send Button */
@@ -339,56 +342,56 @@
             width: 100%;
             background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
             color: #ffffff;
-            padding: 16px 24px;
-            border-radius: 16px;
-            font-size: 1.05rem;
+            padding: 9px 16px;
+            border-radius: 9px;
+            font-size: 0.84rem;
             font-weight: 700;
             cursor: pointer;
             border: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            box-shadow: 0 10px 25px -5px var(--primary-glow);
+            gap: 8px;
+            box-shadow: 0 4px 14px -2px var(--primary-glow);
             transition: all 0.2s ease;
-            margin-top: 10px;
+            margin-top: 6px;
         }
 
         .btn-send:hover {
             filter: brightness(1.1);
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         /* Auto Config Section Styling */
         .auto-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 28px;
-            margin-bottom: 24px;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 14px;
         }
 
         .toggle-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
-            padding-bottom: 16px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .toggle-info h3 {
-            font-size: 1.1rem;
+            font-size: 0.94rem;
             font-weight: 700;
             color: #fff;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .toggle-info p {
-            font-size: 0.85rem;
+            font-size: 0.74rem;
             color: var(--text-muted);
         }
 
@@ -396,8 +399,8 @@
         .switch {
             position: relative;
             display: inline-block;
-            width: 52px;
-            height: 28px;
+            width: 42px;
+            height: 22px;
             flex-shrink: 0;
         }
 
@@ -419,10 +422,10 @@
         .slider:before {
             position: absolute;
             content: "";
-            height: 20px;
-            width: 20px;
-            left: 4px;
-            bottom: 4px;
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
             background-color: white;
             transition: .3s;
             border-radius: 50%;
@@ -433,14 +436,14 @@
         }
 
         input:checked + .slider:before {
-            transform: translateX(24px);
+            transform: translateX(20px);
         }
 
         /* Quick Templates */
         .templates-bar {
             display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
+            gap: 6px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
         }
 
@@ -448,9 +451,9 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: #cbd5e1;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 0.74rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -464,45 +467,46 @@
 
         /* Timer Test Bar */
         .timer-box {
-            background: rgba(168, 85, 247, 0.1);
-            border: 1px solid rgba(168, 85, 247, 0.25);
-            border-radius: 18px;
-            padding: 20px;
-            margin-top: 24px;
+            background: rgba(168, 85, 247, 0.08);
+            border: 1px solid rgba(168, 85, 247, 0.20);
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 14px;
         }
 
         .timer-buttons {
             display: flex;
-            gap: 10px;
-            margin-top: 12px;
+            gap: 8px;
+            margin-top: 8px;
             flex-wrap: wrap;
         }
 
         .btn-timer {
-            background: rgba(168, 85, 247, 0.2);
-            border: 1px solid rgba(168, 85, 247, 0.4);
+            background: rgba(168, 85, 247, 0.18);
+            border: 1px solid rgba(168, 85, 247, 0.35);
             color: #d8b4fe;
-            padding: 10px 16px;
-            border-radius: 12px;
-            font-size: 0.88rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .btn-timer:hover {
-            background: rgba(168, 85, 247, 0.4);
+            background: rgba(168, 85, 247, 0.35);
             color: #fff;
         }
 
         /* Result Banner */
         .result-banner {
-            margin-top: 18px;
-            padding: 16px;
-            border-radius: 14px;
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
             display: none;
             animation: fadeIn 0.3s ease;
-            line-height: 1.5;
+            line-height: 1.4;
+            font-size: 0.8rem;
         }
 
         .result-success {
@@ -520,14 +524,14 @@
         /* Phone frame */
         .phone-mockup {
             width: 100%;
-            max-width: 320px;
-            height: 480px;
+            max-width: 270px;
+            height: 380px;
             background: #11141c;
-            border: 6px solid #2a3142;
-            border-radius: 40px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            border: 5px solid #2a3142;
+            border-radius: 30px;
+            box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.8);
             position: relative;
-            padding: 18px 16px;
+            padding: 12px 10px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -536,35 +540,35 @@
         }
 
         .phone-notch {
-            width: 110px;
-            height: 18px;
+            width: 90px;
+            height: 14px;
             background: #2a3142;
-            border-radius: 0 0 14px 14px;
-            margin: -18px auto 20px auto;
+            border-radius: 0 0 10px 10px;
+            margin: -12px auto 14px auto;
         }
 
         .phone-clock {
             text-align: center;
-            font-size: 2.8rem;
+            font-size: 2.2rem;
             font-weight: 700;
             color: #e2e8f0;
             margin-bottom: 2px;
-            letter-spacing: -1px;
+            letter-spacing: -0.5px;
         }
 
         .phone-date {
             text-align: center;
-            font-size: 0.8rem;
+            font-size: 0.72rem;
             color: #94a3b8;
-            margin-bottom: 26px;
+            margin-bottom: 16px;
         }
 
         .mock-notification {
             background: rgba(255, 255, 255, 0.88);
             color: #000;
-            border-radius: 18px;
-            padding: 14px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
             backdrop-filter: blur(20px);
             animation: slideDown 0.3s ease;
         }
@@ -579,40 +583,40 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .mock-app-info {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
+            gap: 5px;
+            font-size: 0.70rem;
             font-weight: 700;
             text-transform: uppercase;
         }
 
         .mock-icon {
-            width: 18px;
-            height: 18px;
-            border-radius: 4px;
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
         }
 
         .mock-time {
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             opacity: 0.6;
         }
 
         .mock-title {
-            font-size: 0.95rem;
+            font-size: 0.86rem;
             font-weight: 700;
-            margin-bottom: 4px;
-            line-height: 1.3;
+            margin-bottom: 3px;
+            line-height: 1.25;
         }
 
         .mock-body {
-            font-size: 0.82rem;
+            font-size: 0.75rem;
             opacity: 0.85;
-            line-height: 1.4;
+            line-height: 1.35;
         }
 
         /* Preview Toggles */
@@ -620,23 +624,23 @@
             display: flex;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 4px;
-            margin-bottom: 16px;
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 12px;
             width: 100%;
-            max-width: 320px;
-            margin: 0 auto 16px auto;
+            max-width: 270px;
+            margin: 0 auto 12px auto;
         }
 
         .preview-btn {
             flex: 1;
-            padding: 8px 12px;
+            padding: 5px 10px;
             border: none;
             background: transparent;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.76rem;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
         }
 
@@ -649,34 +653,34 @@
         .subscribers-card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 24px;
-            backdrop-filter: blur(16px);
-            margin-top: 28px;
+            border-radius: 14px;
+            padding: 16px;
+            backdrop-filter: blur(14px);
+            margin-top: 18px;
         }
 
         .table-wrap {
             overflow-x: auto;
-            margin-top: 16px;
+            margin-top: 12px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            font-size: 0.88rem;
+            font-size: 0.8rem;
         }
 
         th {
             color: var(--text-muted);
-            padding: 12px 14px;
-            font-size: 0.78rem;
+            padding: 8px 10px;
+            font-size: 0.72rem;
             text-transform: uppercase;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         td {
-            padding: 14px;
+            padding: 9px 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             color: #cbd5e1;
         }
@@ -685,9 +689,9 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 14px;
+            font-size: 0.72rem;
             font-weight: 700;
         }
 
@@ -699,10 +703,10 @@
             background: transparent;
             border: 1px solid rgba(239, 68, 68, 0.3);
             color: #f87171;
-            padding: 6px 10px;
-            border-radius: 8px;
+            padding: 4px 8px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             font-weight: 600;
         }
 
@@ -710,13 +714,68 @@
             background: rgba(239, 68, 68, 0.15);
         }
 
+        /* Direction and Chat Styles for WhatsApp Messages */
+        .msg-bubble {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.78rem;
+            color: #f1f5f9;
+            line-height: 1.4;
+            max-width: 480px;
+            word-break: break-word;
+        }
+
+        .msg-direction-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 7px;
+            border-radius: 8px;
+            font-size: 0.70rem;
+            font-weight: 700;
+        }
+
+        .msg-direction-badge.inbound {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #4ade80;
+        }
+
+        .msg-direction-badge.outbound {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            color: #a5b4fc;
+        }
+
+        .btn-reply-wa {
+            background: #25D366;
+            color: #fff;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-reply-wa:hover {
+            background: #1eb857;
+            transform: translateY(-1px);
+        }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
+            from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
+            from { opacity: 0; transform: translateY(-6px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
@@ -789,10 +848,13 @@
                 <span>✍️ Manual Send</span>
             </button>
             <button class="tab-btn" onclick="switchTab('autoTab')">
-                <span>🤖 Auto Push Settings</span>
+                <span>🤖 Auto Push</span>
             </button>
             <button class="tab-btn" onclick="switchTab('whatsappTab')">
                 <span>💬 WhatsApp 24h & Webhook</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('whatsappMessagesTab')">
+                <span>📩 WhatsApp Messages & Test (<span id="waMsgBadgeCount" style="color: #4ade80; font-weight: 800;">0</span>)</span>
             </button>
             <button class="tab-btn" onclick="switchTab('logsTab')">
                 <span>⚠️ Error Logs (<span id="errorBadgeCount" style="color: #f87171; font-weight: 800;">0</span>)</span>
@@ -841,15 +903,15 @@
                         </div>
 
                         <!-- Click to WhatsApp 24h Trigger Toggle -->
-                        <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 16px; padding: 16px; margin-bottom: 20px;">
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: #4ade80;">
-                                <input type="checkbox" id="openWhatsAppCheck" style="width: 18px; height: 18px; accent-color: #22c55e;">
+                        <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; color: #4ade80; font-size: 0.8rem;">
+                                <input type="checkbox" id="openWhatsAppCheck" style="width: 15px; height: 15px; accent-color: #22c55e;">
                                 <span>💬 Open WhatsApp on Click (Trigger Free 24h Roundtrip)</span>
                             </label>
-                            <div id="waTextGroup" style="display: none; margin-top: 12px;">
-                                <label class="form-label" for="waPrefillText" style="color: #cbd5e1; font-size: 0.82rem;">Pre-filled WhatsApp Message (Customer will send this)</label>
+                            <div id="waTextGroup" style="display: none; margin-top: 8px;">
+                                <label class="form-label" for="waPrefillText" style="color: #cbd5e1; font-size: 0.72rem;">Pre-filled WhatsApp Message (Customer will send this)</label>
                                 <input type="text" id="waPrefillText" class="form-input" value="Hi! I saw your promotion and I want to claim the special offer.">
-                                <span style="font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 4px;">When clicked, this message will be pre-typed in customer's WhatsApp. Tapping Send opens their 24h window for free!</span>
+                                <span style="font-size: 0.70rem; color: #94a3b8; display: block; margin-top: 3px;">When clicked, this message will be pre-typed in customer's WhatsApp. Tapping Send opens their 24h window for free!</span>
                             </div>
                         </div>
 
@@ -1034,7 +1096,7 @@
                     <textarea id="autoRecurringBody" class="form-textarea">This is an automatic notification sent to keep you updated.</textarea>
                 </div>
 
-                <button type="button" id="btnSaveAutoConfig" class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <button type="button" id="btnSaveAutoConfig" class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: auto; padding: 8px 20px;">
                     <span>💾</span>
                     <span>Save Auto Push Settings</span>
                 </button>
@@ -1044,10 +1106,10 @@
 
             <!-- 3. Delayed Auto Test (Background / Lockscreen Test) -->
             <div class="timer-box">
-                <div style="font-weight: 700; font-size: 1.05rem; color: #fff; margin-bottom: 4px;">
+                <div style="font-weight: 700; font-size: 0.92rem; color: #fff; margin-bottom: 3px;">
                     <span>⏱️ Instant Auto-Timer Test (Test Phone Lockscreen Delivery)</span>
                 </div>
-                <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
+                <p style="font-size: 0.78rem; color: #cbd5e1; line-height: 1.4;">
                     Click a timer below, then immediately <strong>minimize your browser or lock your phone</strong>. The server will automatically dispatch the notification in the background!
                 </p>
 
@@ -1057,7 +1119,7 @@
                     <button class="btn-timer" onclick="triggerAutoTimer(30)">⏱️ Auto Send in 30 Seconds</button>
                 </div>
 
-                <div id="timerCountdown" style="margin-top: 14px; font-weight: 700; color: #a855f7; display: none;"></div>
+                <div id="timerCountdown" style="margin-top: 10px; font-weight: 700; color: #a855f7; display: none; font-size: 0.8rem;"></div>
             </div>
 
         </div>
@@ -1066,72 +1128,77 @@
         <div id="whatsappTab" class="tab-content">
             
             <!-- 1. Meta Webhook Connection Card -->
-            <div class="card" style="margin-bottom: 24px; border-color: rgba(34, 197, 94, 0.3);">
-                <div class="card-title" style="color: #4ade80;">
-                    <span>🔗 Meta WhatsApp Webhook Configuration</span>
+            <div class="card" style="margin-bottom: 14px; border-color: rgba(34, 197, 94, 0.3);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div class="card-title" style="color: #4ade80; margin-bottom: 0;">
+                        <span>🔗 Meta WhatsApp Webhook Configuration</span>
+                    </div>
+                    <button type="button" class="btn-link" onclick="switchTab('whatsappMessagesTab')" style="background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); color: #4ade80;">
+                        <span>💬 Open Live WhatsApp Chat & Test Console &rarr;</span>
+                    </button>
                 </div>
-                <p style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 20px;">
-                    Configure these credentials in your <strong>Meta App Developer Portal &rarr; WhatsApp &rarr; Configuration &rarr; Webhook</strong>. When a customer sends a message, Meta triggers this webhook to open their <strong>24-Hour Free Customer Roundtrip Window</strong>!
+                <p style="font-size: 0.78rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 12px;">
+                    Configure these credentials in your <strong>Meta App Developer Portal &rarr; WhatsApp &rarr; Configuration &rarr; Webhook</strong>. When a customer sends a message, Meta triggers this webhook to open their <strong>24-Hour Free Roundtrip Window</strong>!
                 </p>
 
-                <div class="input-row" style="margin-bottom: 16px;">
-                    <div class="form-group" style="flex: 2;">
+                <div class="input-row" style="margin-bottom: 10px;">
+                    <div class="form-group" style="flex: 2; margin-bottom: 0;">
                         <label class="form-label">Callback Webhook URL (Paste in Meta)</label>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 6px;">
                             <input type="text" id="webhookUrlInput" class="form-input" readonly value="Loading..." style="background: rgba(0,0,0,0.4); font-family: monospace; color: #38bdf8;">
-                            <button type="button" class="badge-btn" onclick="copyWebhookUrl()" style="white-space: nowrap; padding: 0 16px;">📋 Copy URL</button>
+                            <button type="button" class="badge-btn" onclick="copyWebhookUrl()" style="white-space: nowrap; padding: 0 12px;">📋 Copy</button>
                         </div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 4px;">Must be a public HTTPS URL (use localtunnel or your live domain)</span>
+                        <span style="font-size: 0.70rem; color: #94a3b8; display: block; margin-top: 3px;">Must be a public HTTPS URL (use localtunnel or live domain)</span>
                     </div>
 
-                    <div class="form-group" style="flex: 1.2;">
+                    <div class="form-group" style="flex: 1.2; margin-bottom: 0;">
                         <label class="form-label">Verify Token (Paste in Meta)</label>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 6px;">
                             <input type="text" id="verifyTokenInput" class="form-input" readonly value="agentifire_push_webhook_verify_2026" style="background: rgba(0,0,0,0.4); font-family: monospace; color: #4ade80;">
-                            <button type="button" class="badge-btn" onclick="copyVerifyToken()" style="white-space: nowrap; padding: 0 16px;">📋 Copy Token</button>
+                            <button type="button" class="badge-btn" onclick="copyVerifyToken()" style="white-space: nowrap; padding: 0 12px;">📋 Copy</button>
                         </div>
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 12px;">
                     <div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; display: block;">WhatsApp Phone Number:</span>
-                        <strong id="infoDisplayPhone" style="color: #4ade80; font-size: 0.95rem;">+1 555-381-5350</strong>
+                        <span style="font-size: 0.70rem; color: #94a3b8; display: block;">WhatsApp Phone Number:</span>
+                        <strong id="infoDisplayPhone" style="color: #4ade80; font-size: 0.85rem;">+1 555-381-5350</strong>
                     </div>
                     <div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; display: block;">Phone Number ID:</span>
-                        <strong style="color: #cbd5e1; font-size: 0.95rem; font-family: monospace;">1295508190319109</strong>
+                        <span style="font-size: 0.70rem; color: #94a3b8; display: block;">Phone Number ID:</span>
+                        <strong style="color: #cbd5e1; font-size: 0.85rem; font-family: monospace;">1295508190319109</strong>
                     </div>
                     <div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; display: block;">WABA ID:</span>
-                        <strong style="color: #cbd5e1; font-size: 0.95rem; font-family: monospace;">1137250928941978</strong>
+                        <span style="font-size: 0.70rem; color: #94a3b8; display: block;">WABA ID:</span>
+                        <strong style="color: #cbd5e1; font-size: 0.85rem; font-family: monospace;">1137250928941978</strong>
                     </div>
                 </div>
             </div>
 
             <!-- 2. One-Click 24h Re-Activation Action Card -->
-            <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(34, 197, 94, 0.12)); border-color: rgba(168, 85, 247, 0.3);">
-                <div class="card-title" style="color: #e9d5ff;">
+            <div class="card" style="margin-bottom: 14px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(34, 197, 94, 0.10)); border-color: rgba(168, 85, 247, 0.3);">
+                <div class="card-title" style="color: #e9d5ff; margin-bottom: 6px;">
                     <span>⚡ One-Click 24h Roundtrip Re-Engagement</span>
                 </div>
-                <p style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 16px;">
+                <p style="font-size: 0.78rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 10px;">
                     When 24 hours expire, send an instant push notification asking subscribers to tap and send 1 quick WhatsApp message. This immediately revives their <strong>24h Free Customer Service Window</strong> with 0 Meta template charges!
                 </p>
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <button type="button" id="btnBroadcastReopen" class="btn-send" style="background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); width: auto; padding: 14px 24px;">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" id="btnBroadcastReopen" class="btn-send" style="background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); width: auto; padding: 8px 18px;">
                         <span>🚀</span>
                         <span>Broadcast 24h Re-Open Push to All Expired Devices</span>
                     </button>
-                    <span id="reopenBroadcastFeedback" style="font-size: 0.88rem; font-weight: 600;"></span>
+                    <span id="reopenBroadcastFeedback" style="font-size: 0.78rem; font-weight: 600;"></span>
                 </div>
             </div>
 
             <!-- 3. Pre-filled WhatsApp Messages Settings -->
-            <div class="card" style="margin-bottom: 24px;">
-                <div class="card-title">
+            <div class="card" style="margin-bottom: 14px;">
+                <div class="card-title" style="margin-bottom: 6px;">
                     <span>💬 Default Pre-filled WhatsApp Messages</span>
                 </div>
-                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 16px;">
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px;">
                     These messages will be automatically pre-typed into WhatsApp when customers tap push notifications.
                 </p>
 
@@ -1150,7 +1217,7 @@
                     <input type="text" id="cfgReopenText" class="form-input" value="Hi! Please re-open my 24h VIP alerts session.">
                 </div>
 
-                <button type="button" id="btnSaveWaSettings" class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <button type="button" id="btnSaveWaSettings" class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: auto; padding: 8px 20px;">
                     <span>💾</span>
                     <span>Save WhatsApp Message Settings</span>
                 </button>
@@ -1159,23 +1226,114 @@
 
         </div>
 
-        <!-- TAB 4: SYSTEM ERROR LOGS (error-logs.json) -->
+        <!-- TAB 4: WHATSAPP MESSAGES LOGS & DIRECT TEST SENDER (whatsapp-messages.json) -->
+        <div id="whatsappMessagesTab" class="tab-content">
+            
+            <!-- 1. Direct WhatsApp Message Tester -->
+            <div class="card" style="margin-bottom: 14px; border-color: rgba(34, 197, 94, 0.35); background: linear-gradient(135deg, rgba(18, 24, 38, 0.9), rgba(34, 197, 94, 0.08));">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                    <div class="card-title" style="color: #4ade80; margin-bottom: 0;">
+                        <span>⚡ Direct WhatsApp Message Tester (Cloud API)</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(0,0,0,0.35); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);">
+                            Business Phone: <strong style="color: #4ade80;">+1 555-381-5350</strong> (Doplexer Solution)
+                        </span>
+                    </div>
+                </div>
+                
+                <p style="font-size: 0.78rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 10px;">
+                    Test sending a direct WhatsApp message to any customer number. 
+                    <strong style="color: #4ade80;">24h Rule:</strong> When a customer initiates a message, their 24h roundtrip window is open and custom messages are sent <strong>100% free with 0 template charges</strong>!
+                </p>
+
+                <div class="input-row" style="margin-bottom: 10px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="testWaRecipient">Recipient Phone Number (with Country Code)</label>
+                        <input type="text" id="testWaRecipient" class="form-input" placeholder="e.g. 923001234567 or 15551234567" style="font-family: monospace; color: #38bdf8;">
+                        <div id="quickPhonePills" style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; align-items: center;">
+                            <span style="font-size: 0.70rem; color: #94a3b8;">Quick Fill:</span>
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="testWaText">Message Body</label>
+                        <textarea id="testWaText" class="form-textarea" rows="2" style="min-height: 54px;" placeholder="Type your WhatsApp message here...">Hi! This is a test message from Agentifire WhatsApp 24h roundtrip system.</textarea>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                    <button type="button" id="btnSendWaTest" class="btn-send" style="background: linear-gradient(135deg, #25D366 0%, #10b981 100%); width: auto; padding: 7px 18px;" onclick="sendWhatsAppTestMessage()">
+                        <span>💬 Send WhatsApp Message Now</span>
+                    </button>
+                    <div id="waTestFeedback" style="font-size: 0.76rem; font-weight: 600;"></div>
+                </div>
+            </div>
+
+            <!-- 2. WhatsApp Message History Logs (whatsapp-messages.json) -->
+            <div class="card" style="border-color: rgba(99, 102, 241, 0.3);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <div class="card-title" style="color: #818cf8; margin-bottom: 2px;">
+                            <span>📋 WhatsApp Message Logs (whatsapp-messages.json)</span>
+                        </div>
+                        <p style="font-size: 0.74rem; color: #94a3b8;">
+                            Live record of all incoming customer messages from Meta Webhook and outgoing test messages.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <span id="waStatsCounts" style="font-size: 0.72rem; color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px;">0 messages</span>
+                        <input type="text" id="filterWaInput" placeholder="🔍 Search phone/text..." oninput="filterWaMessages()" class="form-input" style="width: 170px; padding: 4px 8px; font-size: 0.75rem;">
+                        <button type="button" class="btn-link" onclick="fetchWaMessages()">
+                            <span>🔄 Refresh</span>
+                        </button>
+                        <button type="button" class="btn-delete" style="padding: 5px 10px; font-size: 0.75rem;" onclick="clearWaMessages()">
+                            <span>🗑️ Clear</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 85px;">Direction</th>
+                                <th style="width: 130px;">Phone Number</th>
+                                <th style="width: 130px;">Contact / Name</th>
+                                <th>Message Content</th>
+                                <th style="width: 130px;">Timestamp</th>
+                                <th style="width: 80px;">Status</th>
+                                <th style="width: 85px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="waMessagesTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Loading WhatsApp messages...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB 5: SYSTEM ERROR LOGS (error-logs.json) -->
         <div id="logsTab" class="tab-content">
             <div class="card" style="border-color: rgba(239, 68, 68, 0.3);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <div>
-                        <div class="card-title" style="color: #f87171; margin-bottom: 4px;">
+                        <div class="card-title" style="color: #f87171; margin-bottom: 2px;">
                             <span>⚠️ System Error Logs (error-logs.json)</span>
                         </div>
-                        <p style="font-size: 0.85rem; color: #94a3b8;">
+                        <p style="font-size: 0.74rem; color: #94a3b8;">
                             Automatic real-time logs for Push delivery failures, WhatsApp webhook errors, and API exceptions stored in <code>error-logs.json</code>.
                         </p>
                     </div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 6px;">
                         <button type="button" class="btn-link" onclick="fetchErrorLogs()">
                             <span>🔄 Refresh Logs</span>
                         </button>
-                        <button type="button" class="btn-delete" style="padding: 8px 16px; font-size: 0.85rem;" onclick="clearErrorLogs()">
+                        <button type="button" class="btn-delete" style="padding: 5px 10px; font-size: 0.75rem;" onclick="clearErrorLogs()">
                             <span>🗑️ Clear Error Logs</span>
                         </button>
                     </div>
@@ -1319,14 +1477,18 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
+            const tabBtns = document.querySelectorAll('.tab-btn');
             if (tabId === 'composeTab') {
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                if (tabBtns[0]) tabBtns[0].classList.add('active');
             } else if (tabId === 'autoTab') {
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                if (tabBtns[1]) tabBtns[1].classList.add('active');
             } else if (tabId === 'whatsappTab') {
-                document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                if (tabBtns[2]) tabBtns[2].classList.add('active');
+            } else if (tabId === 'whatsappMessagesTab') {
+                if (tabBtns[3]) tabBtns[3].classList.add('active');
+                fetchWaMessages();
             } else if (tabId === 'logsTab') {
-                document.querySelectorAll('.tab-btn')[3].classList.add('active');
+                if (tabBtns[4]) tabBtns[4].classList.add('active');
                 fetchErrorLogs();
             }
             const target = document.getElementById(tabId);
@@ -1463,7 +1625,8 @@
                         <td>${roundtripBadge}</td>
                         <td style="font-size:0.8rem; color:#94a3b8;">${dateStr}</td>
                         <td>
-                            <button class="badge-btn" style="background:#25D366; color:#fff; border:none; margin-right:6px;" onclick="sendReopenSingle('${sub.id}')" title="Send push to reopen WhatsApp 24h roundtrip">⚡ Re-open Push</button>
+                            <button class="badge-btn" style="background:#25D366; color:#fff; border:none; margin-right:4px;" onclick="sendReopenSingle('${sub.id}')" title="Send push to reopen WhatsApp 24h roundtrip">⚡ Re-open Push</button>
+                            ${sub.phone ? `<button class="badge-btn" style="background:rgba(56,189,248,0.18); color:#38bdf8; border:1px solid rgba(56,189,248,0.35); margin-right:4px;" onclick="fillTestSender('${escapeHtml(sub.phone)}', '${escapeHtml(sub.name)}')">💬 Test</button>` : ''}
                             <button class="btn-delete" onclick="deleteSubscriber('${sub.id}')">Delete</button>
                         </td>
                     </tr>
@@ -1805,10 +1968,215 @@
             }
         }
 
+        // --- WhatsApp Live Messages & Direct Test Sender (whatsapp-messages.json) ---
+        let waMessagesList = [];
+
+        async function fetchWaMessages() {
+            try {
+                const res = await fetch('/api/whatsapp/messages');
+                const data = await res.json();
+                waMessagesList = data.messages || [];
+
+                const badge = document.getElementById('waMsgBadgeCount');
+                if (badge) {
+                    badge.textContent = waMessagesList.length;
+                    badge.style.color = waMessagesList.length > 0 ? '#4ade80' : '#94a3b8';
+                }
+
+                const countsEl = document.getElementById('waStatsCounts');
+                if (countsEl) {
+                    countsEl.textContent = `${data.total || 0} msgs (${data.incomingCount || 0} 📥 / ${data.outgoingCount || 0} 📤)`;
+                }
+
+                renderWaMessagesTable(waMessagesList);
+                updateQuickPhonePills();
+            } catch (err) {
+                console.error('Error fetching WhatsApp messages:', err);
+            }
+        }
+
+        function renderWaMessagesTable(listToRender) {
+            const tbody = document.getElementById('waMessagesTableBody');
+            if (!tbody) return;
+
+            if (!listToRender || listToRender.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #94a3b8; padding: 24px;">
+                            💬 No WhatsApp messages logged yet. When a customer replies or when you send a test message, it will appear here in real-time!
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = listToRender.map(m => {
+                const timeStr = new Date(m.timestamp).toLocaleString();
+                const isInbound = m.direction === 'incoming';
+                const directionBadge = isInbound
+                    ? `<span class="msg-direction-badge inbound">📥 Inbound</span>`
+                    : `<span class="msg-direction-badge outbound">📤 Outbound</span>`;
+
+                const phone = m.from || m.to || '-';
+                const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+
+                let statusBadge = '';
+                if (m.status === 'received') {
+                    statusBadge = `<span style="color:#4ade80; font-weight:700; font-size:0.72rem;">● Received</span>`;
+                } else if (m.status === 'sent') {
+                    statusBadge = `<span style="color:#38bdf8; font-weight:700; font-size:0.72rem;">● Sent</span>`;
+                } else {
+                    statusBadge = `<span style="color:#f87171; font-weight:700; font-size:0.72rem;" title="${escapeHtml(JSON.stringify(m.error || ''))}">● Failed</span>`;
+                }
+
+                return `
+                    <tr>
+                        <td>${directionBadge}</td>
+                        <td style="font-family: monospace; font-weight: 700; color: #38bdf8;">+${escapeHtml(phone)}</td>
+                        <td style="font-weight: 600; color: #fff;">${escapeHtml(m.senderName || 'Customer')}</td>
+                        <td>
+                            <div class="msg-bubble">${escapeHtml(m.text || '')}</div>
+                        </td>
+                        <td style="font-size: 0.74rem; color: #94a3b8; white-space: nowrap;">${timeStr}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button type="button" class="btn-reply-wa" onclick="fillTestSender('${cleanPhone}', '${escapeHtml(m.senderName)}')">
+                                <span>💬 Test</span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterWaMessages() {
+            const query = (document.getElementById('filterWaInput')?.value || '').toLowerCase().trim();
+            if (!query) {
+                renderWaMessagesTable(waMessagesList);
+                return;
+            }
+            const filtered = waMessagesList.filter(m => {
+                const phone = String(m.from || m.to || '').toLowerCase();
+                const name = String(m.senderName || '').toLowerCase();
+                const text = String(m.text || '').toLowerCase();
+                return phone.includes(query) || name.includes(query) || text.includes(query);
+            });
+            renderWaMessagesTable(filtered);
+        }
+
+        function fillTestSender(phone, name) {
+            const recipientInput = document.getElementById('testWaRecipient');
+            const textInput = document.getElementById('testWaText');
+            if (recipientInput) {
+                recipientInput.value = phone;
+                recipientInput.focus();
+            }
+            if (textInput && name && name !== 'Customer' && name !== 'You (Agentifire)') {
+                textInput.value = `Hi ${name}! Thanks for messaging us. Your 24-hour VIP alerts window is active!`;
+            }
+            // Switch to whatsappMessagesTab
+            switchTab('whatsappMessagesTab');
+        }
+
+        function updateQuickPhonePills() {
+            const container = document.getElementById('quickPhonePills');
+            if (!container) return;
+
+            const numbers = new Set();
+            waMessagesList.forEach(m => {
+                const p = m.from || m.to;
+                if (p && p.length >= 8 && p !== '15553815350') numbers.add(String(p).replace(/[^0-9]/g, ''));
+            });
+            (subscribersList || []).forEach(s => {
+                if (s.phone) numbers.add(String(s.phone).replace(/[^0-9]/g, ''));
+            });
+
+            if (numbers.size === 0) {
+                container.innerHTML = `<span style="font-size: 0.70rem; color: #64748b;">No numbers yet</span>`;
+                return;
+            }
+
+            container.innerHTML = `<span style="font-size: 0.70rem; color: #94a3b8;">Quick Fill:</span>` + 
+                Array.from(numbers).slice(0, 6).map(num => `
+                    <button type="button" class="badge-btn" style="padding: 2px 7px; font-size: 0.70rem;" onclick="fillTestSender('${num}', '')">
+                        +${num}
+                    </button>
+                `).join('');
+        }
+
+        async function sendWhatsAppTestMessage() {
+            const recipientInput = document.getElementById('testWaRecipient');
+            const textInput = document.getElementById('testWaText');
+            const btn = document.getElementById('btnSendWaTest');
+            const feedback = document.getElementById('waTestFeedback');
+
+            const to = recipientInput ? recipientInput.value.trim() : '';
+            const message = textInput ? textInput.value.trim() : '';
+
+            if (!to) {
+                alert('Please enter recipient phone number with country code (e.g. 923001234567).');
+                if (recipientInput) recipientInput.focus();
+                return;
+            }
+            if (!message) {
+                alert('Please enter message text to send.');
+                if (textInput) textInput.focus();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Sending via Meta Graph API...</span>';
+            feedback.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/whatsapp/send-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to, message })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    feedback.style.color = '#34d399';
+                    feedback.innerHTML = `✅ <strong>Delivered!</strong> (Meta ID: ${data.messageId})`;
+                    fetchWaMessages();
+                } else {
+                    feedback.style.color = '#f87171';
+                    const errText = data.error || 'Failed to send WhatsApp message.';
+                    let extraTip = '';
+                    if (errText.includes('24 hours') || errText.includes('131047')) {
+                        extraTip = `<br><span style="color:#cbd5e1; font-weight:normal;">💡 24h window closed! Customer must send a message first. Tap 'Broadcast 24h Re-Open Push' to re-open window!</span>`;
+                    }
+                    feedback.innerHTML = `⚠️ ${escapeHtml(errText)}${extraTip}`;
+                    fetchWaMessages();
+                }
+            } catch (err) {
+                feedback.style.color = '#f87171';
+                feedback.innerHTML = `❌ Error: ${escapeHtml(err.message)}`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>💬 Send WhatsApp Message Now</span>';
+            }
+        }
+
+        async function clearWaMessages() {
+            if (!confirm('Are you sure you want to clear all WhatsApp message logs from whatsapp-messages.json?')) return;
+            try {
+                const res = await fetch('/api/whatsapp/messages/clear', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    fetchWaMessages();
+                }
+            } catch (err) {
+                alert('Failed to clear WhatsApp messages: ' + err.message);
+            }
+        }
+
         btnRefresh.addEventListener('click', () => {
             fetchSubscribers();
             fetchAutoConfig();
             fetchErrorLogs();
+            fetchWaMessages();
         });
 
         // Init
@@ -1816,6 +2184,7 @@
             fetchSubscribers();
             fetchAutoConfig();
             fetchErrorLogs();
+            fetchWaMessages();
             updateLivePreview();
         });
     </script>
