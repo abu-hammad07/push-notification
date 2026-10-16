@@ -1,17 +1,1 @@
-[
-  {
-    "id": "err_1792141139594_dhjn8",
-    "timestamp": "2026-10-16T08:58:59.594Z",
-    "type": "PUSH_DELIVERY_FAILED",
-    "message": "Failed push delivery to My PC (desktop): Received unexpected response code",
-    "details": {
-      "statusCode": 410,
-      "subscriberId": "sub_1792141090387_l2kpoq",
-      "name": "My PC",
-      "platform": "desktop",
-      "endpointPreview": "https://fcm.googleapis.com/fcm/send/dN2dioRo29A:AP...",
-      "body": "push subscription has unsubscribed or expired.\n"
-    },
-    "request": null
-  }
-]
+[]
