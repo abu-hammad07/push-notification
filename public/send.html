@@ -857,6 +857,9 @@
             <button class="tab-btn" onclick="switchTab('whatsappMessagesTab')">
                 <span>📩 WhatsApp Messages & Test (<span id="waMsgBadgeCount" style="color: #4ade80; font-weight: 800;">0</span>)</span>
             </button>
+            <button class="tab-btn" onclick="switchTab('missedCallsTab')">
+                <span>📞 Missed Calls & Voice Notes (<span id="missedCallsBadgeCount" style="color: #38bdf8; font-weight: 800;">0</span>)</span>
+            </button>
             <button class="tab-btn" onclick="switchTab('logsTab')">
                 <span>⚠️ Error Logs (<span id="errorBadgeCount" style="color: #f87171; font-weight: 800;">0</span>)</span>
             </button>
@@ -1360,6 +1363,147 @@
             </div>
         </div>
 
+        <!-- TAB 6: MISSED CALLS & VOICE NOTES -->
+        <div id="missedCallsTab" class="tab-content">
+            <div class="content-grid" style="grid-template-columns: 1fr 1.3fr; gap: 14px; margin-bottom: 16px;">
+                
+                <!-- Card 1: 1-Click Client Setup Link Generator -->
+                <div class="card" style="border-color: rgba(56, 189, 248, 0.3);">
+                    <div class="card-title" style="color: #38bdf8; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                        <span>🔗</span>
+                        <span>Client Onboarding Link Generator</span>
+                    </div>
+                    <p style="font-size: 0.74rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.35;">
+                        Generate a unique, pre-configured link for any customer. When opened, their phone number is auto-filled & locked so they subscribe in 1 tap!
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label" for="linkGenPhone">Customer WhatsApp Number</label>
+                        <div class="phone-row">
+                            <select id="linkGenCC" class="form-input cc-select" style="width: 90px;">
+                                <option value="92" selected>🇵🇰 +92</option>
+                                <option value="91">🇮🇳 +91</option>
+                                <option value="971">🇦🇪 +971</option>
+                                <option value="966">🇸🇦 +966</option>
+                                <option value="1">🇺🇸 +1</option>
+                                <option value="44">🇬🇧 +44</option>
+                            </select>
+                            <input type="tel" id="linkGenPhone" class="form-input" placeholder="3131192139">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="linkGenName">Customer Name (Optional)</label>
+                        <input type="text" id="linkGenName" class="form-input" placeholder="e.g. Abu Hammad">
+                    </div>
+
+                    <button type="button" class="btn-send" style="background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff;" onclick="generateClientLink()">
+                        <span>🔗</span>
+                        <span>Generate 1-Click Client Link</span>
+                    </button>
+
+                    <div id="generatedLinkBox" style="display: none; margin-top: 12px; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 10px;">
+                        <div style="font-size: 0.7rem; color: #38bdf8; font-weight: 700; margin-bottom: 4px;">Share this Link with Customer:</div>
+                        <input type="text" id="generatedLinkInput" readonly style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 6px; font-size: 0.72rem; font-family: monospace; margin-bottom: 6px;" onclick="this.select()">
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="badge-btn" style="flex: 1; background: #0284c7; color: #fff; border: none; padding: 5px;" onclick="copyClientLink()">📋 Copy Link</button>
+                            <a id="generatedLinkOpenBtn" href="#" target="_blank" class="badge-btn" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; display: flex; align-items: center; justify-content: center; padding: 5px 10px;">🚀 Open</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Missed Call & Voice Note Simulator -->
+                <div class="card" style="border-color: rgba(16, 185, 129, 0.3);">
+                    <div class="card-title" style="color: #34d399; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                        <span>🎙️</span>
+                        <span>Missed Call & Voice Note Simulator</span>
+                    </div>
+                    <p style="font-size: 0.74rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.35;">
+                        Simulate a missed call event. If 24h window is open, WhatsApp audio delivers instantly. If expired, high-priority push is sent and audio is queued!
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div class="form-group">
+                            <label class="form-label" for="simSubscriberPhone">Target Subscriber (Party B)</label>
+                            <input type="tel" id="simSubscriberPhone" list="subscriberPhoneList" class="form-input" placeholder="923131192139">
+                            <datalist id="subscriberPhoneList"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="simCallerName">Caller Name (Party A)</label>
+                            <input type="text" id="simCallerName" class="form-input" value="Ahmed Khan (Client)">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div class="form-group">
+                            <label class="form-label" for="simCallerPhone">Caller Number (Party A)</label>
+                            <input type="tel" id="simCallerPhone" class="form-input" value="923001234567">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="simDuration">Audio Duration</label>
+                            <input type="number" id="simDuration" class="form-input" value="15" placeholder="Seconds">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="simAudioUrl">Voice Recording MP3 URL</label>
+                        <input type="url" id="simAudioUrl" class="form-input" value="https://actions.google.com/sounds/v1/speech/greeting.mp3">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="simTranscript">Transcript / Message Text</label>
+                        <input type="text" id="simTranscript" class="form-input" value="Salam bhai, emergency kaam tha invoice ka, please call back karein.">
+                    </div>
+
+                    <button type="button" id="btnSimulateCall" class="btn-send" style="background: linear-gradient(135deg, #059669, #10b981); color: #fff;" onclick="triggerMissedCallSimulation()">
+                        <span>📞</span>
+                        <span>Simulate Missed Call & Trigger Voice Note</span>
+                    </button>
+
+                    <div id="simFeedback" style="display: none; margin-top: 10px; padding: 9px 12px; border-radius: 8px; font-size: 0.76rem; line-height: 1.4;"></div>
+                </div>
+
+            </div>
+
+            <!-- Missed Calls History Table -->
+            <div class="card" style="border-color: rgba(255, 255, 255, 0.08);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <div class="card-title" style="margin-bottom: 2px;">
+                            <span>📋 Missed Calls & Voice Notes History</span>
+                        </div>
+                        <p style="font-size: 0.74rem; color: #94a3b8;">
+                            Live record of all incoming missed calls, audio recordings, 24h window status at call time, and WhatsApp delivery tracking.
+                        </p>
+                    </div>
+                    <button type="button" class="btn-link" onclick="fetchMissedCalls()">
+                        <span>🔄 Refresh Calls</span>
+                    </button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Caller (Party A)</th>
+                                <th>Target Subscriber (Party B)</th>
+                                <th>Voice Note (MP3 Audio)</th>
+                                <th>24h Status At Call</th>
+                                <th>Delivery Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="missedCallsTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 24px;">Loading missed calls history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Registered Subscribers Table -->
         <div class="subscribers-card">
             <div class="card-title" style="margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
@@ -1481,22 +1625,15 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-            const tabBtns = document.querySelectorAll('.tab-btn');
-            if (tabId === 'composeTab') {
-                if (tabBtns[0]) tabBtns[0].classList.add('active');
-            } else if (tabId === 'autoTab') {
-                if (tabBtns[1]) tabBtns[1].classList.add('active');
-            } else if (tabId === 'whatsappTab') {
-                if (tabBtns[2]) tabBtns[2].classList.add('active');
-            } else if (tabId === 'whatsappMessagesTab') {
-                if (tabBtns[3]) tabBtns[3].classList.add('active');
-                fetchWaMessages();
-            } else if (tabId === 'logsTab') {
-                if (tabBtns[4]) tabBtns[4].classList.add('active');
-                fetchErrorLogs();
-            }
+            const activeBtn = document.querySelector(`.tab-btn[onclick*="${tabId}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
             const target = document.getElementById(tabId);
             if (target) target.classList.add('active');
+
+            if (tabId === 'whatsappMessagesTab') fetchWaMessages();
+            else if (tabId === 'missedCallsTab') fetchMissedCalls();
+            else if (tabId === 'logsTab') fetchErrorLogs();
         }
 
         // Live Preview Synchronization
@@ -1588,6 +1725,18 @@
                     opt.textContent = `${s.name} (${s.platform.toUpperCase()}) - ${roundtripStr}`;
                     selectSubscriber.appendChild(opt);
                 });
+
+                const simDatalist = document.getElementById('subscriberPhoneList');
+                if (simDatalist) {
+                    simDatalist.innerHTML = subscribersList.filter(s => s.phone).map(s => 
+                        `<option value="${escapeHtml(s.phone)}">${escapeHtml(s.name)} (${s.platform.toUpperCase()}) - ${s.whatsapp24h && s.whatsapp24h.isActive ? 'Active' : 'Expired'}</option>`
+                    ).join('');
+                }
+                const simInput = document.getElementById('simSubscriberPhone');
+                if (simInput && !simInput.value) {
+                    const firstWithPhone = subscribersList.find(s => s.phone);
+                    if (firstWithPhone) simInput.value = firstWithPhone.phone;
+                }
 
                 renderTable();
             } catch (err) {
@@ -2234,11 +2383,210 @@
             }
         }
 
+        // --- 📞 Missed Calls & Voice Notes Engine ---
+
+        async function generateClientLink() {
+            const phone = document.getElementById('linkGenPhone').value.trim();
+            const cc = document.getElementById('linkGenCC').value;
+            const name = document.getElementById('linkGenName').value.trim();
+
+            if (!phone) {
+                alert('Please enter a WhatsApp phone number');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/link/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, name, countryCode: cc })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const box = document.getElementById('generatedLinkBox');
+                    const input = document.getElementById('generatedLinkInput');
+                    const openBtn = document.getElementById('generatedLinkOpenBtn');
+                    box.style.display = 'block';
+                    input.value = data.url;
+                    openBtn.href = data.url;
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Failed to generate link: ' + e.message);
+            }
+        }
+
+        function copyClientLink() {
+            const input = document.getElementById('generatedLinkInput');
+            if (!input || !input.value) return;
+            input.select();
+            navigator.clipboard.writeText(input.value).then(() => {
+                alert('📋 Client setup link copied to clipboard!\n\nSend this to your customer to subscribe in 1 click.');
+            }).catch(() => {
+                document.execCommand('copy');
+                alert('📋 Link copied!');
+            });
+        }
+
+        async function triggerMissedCallSimulation() {
+            const subscriberPhone = document.getElementById('simSubscriberPhone').value.trim();
+            const callerName = document.getElementById('simCallerName').value.trim() || 'Ahmed Khan';
+            const callerPhone = document.getElementById('simCallerPhone').value.trim() || '923001234567';
+            const audioUrl = document.getElementById('simAudioUrl').value.trim();
+            const durationSeconds = parseInt(document.getElementById('simDuration').value) || 15;
+            const transcript = document.getElementById('simTranscript').value.trim();
+
+            const btn = document.getElementById('btnSimulateCall');
+            const feedback = document.getElementById('simFeedback');
+
+            if (!subscriberPhone) {
+                alert('Please enter target subscriber phone number');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Processing Call Event...</span>';
+            feedback.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/call/missed-call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscriberPhone,
+                        callerName,
+                        callerPhone,
+                        audioUrl,
+                        durationSeconds,
+                        transcript
+                    })
+                });
+                const data = await res.json();
+                feedback.style.display = 'block';
+
+                if (data.success) {
+                    if (data.delivered) {
+                        feedback.style.background = 'rgba(34, 197, 94, 0.15)';
+                        feedback.style.border = '1px solid rgba(34, 197, 94, 0.35)';
+                        feedback.style.color = '#86efac';
+                        feedback.innerHTML = `✅ <strong>Voice Note Delivered!</strong> 24h window was active. Text summary + Audio MP3 sent to customer on WhatsApp & Web Push sent!`;
+                    } else if (data.queued) {
+                        feedback.style.background = 'rgba(245, 158, 11, 0.15)';
+                        feedback.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+                        feedback.style.color = '#fde68a';
+                        feedback.innerHTML = `⚠️ <strong>24h Window Closed!</strong> High-priority Web Push notification sent to customer's device. Audio recording is queued in PostgreSQL and will auto-deliver the moment customer taps push & sends WhatsApp message!`;
+                    }
+                    await fetchMissedCalls();
+                    await fetchSubscribers();
+                    await fetchWaMessages();
+                } else {
+                    feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+                    feedback.style.border = '1px solid rgba(239, 68, 68, 0.35)';
+                    feedback.style.color = '#fca5a5';
+                    feedback.innerHTML = `❌ Error: ${escapeHtml(data.error || 'Failed to simulate missed call')}`;
+                }
+            } catch (e) {
+                feedback.style.display = 'block';
+                feedback.style.background = 'rgba(239, 68, 68, 0.15)';
+                feedback.style.border = '1px solid rgba(239, 68, 68, 0.35)';
+                feedback.style.color = '#fca5a5';
+                feedback.innerHTML = `❌ Exception: ${escapeHtml(e.message)}`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>📞 Simulate Missed Call & Trigger Voice Note</span>';
+            }
+        }
+
+        async function fetchMissedCalls() {
+            const tableBody = document.getElementById('missedCallsTableBody');
+            const badge = document.getElementById('missedCallsBadgeCount');
+            if (!tableBody) return;
+
+            try {
+                const res = await fetch('/api/call/missed-calls');
+                const data = await res.json();
+                const calls = data.calls || [];
+
+                if (badge) badge.textContent = calls.length;
+
+                if (calls.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #94a3b8; padding: 28px;">
+                                No missed calls recorded yet. Use the Simulator above or trigger <code>POST /api/call/missed-call</code> from your PBX/Vapi!
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tableBody.innerHTML = calls.map(c => {
+                    const dateStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '-';
+                    const isDelivered = c.delivery_status === 'delivered_whatsapp';
+                    const statusBadge = isDelivered
+                        ? `<span style="background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:3px 8px; border-radius:12px; font-weight:700; font-size:0.72rem;">🟢 Delivered (WhatsApp + Push)</span>`
+                        : `<span style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; padding:3px 8px; border-radius:12px; font-weight:700; font-size:0.72rem;">⏳ Queued (Push Sent)</span>`;
+
+                    const windowBadge = c.window_active_at_call
+                        ? `<span style="color:#4ade80; font-weight:600;">🟢 Active</span>`
+                        : `<span style="color:#f87171; font-weight:600;">🔴 Expired</span>`;
+
+                    const audioPlayer = c.audio_url
+                        ? `<audio controls preload="none" src="${escapeHtml(c.audio_url)}" style="height:28px; max-width:180px;"></audio>`
+                        : `<span style="color:#64748b; font-size:0.72rem;">No Audio</span>`;
+
+                    return `
+                        <tr>
+                            <td style="font-size:0.75rem; color:#94a3b8;">${dateStr}</td>
+                            <td>
+                                <strong style="color:#fff;">${escapeHtml(c.caller_name || 'Caller')}</strong>
+                                <div style="font-family:monospace; color:#38bdf8; font-size:0.72rem;">+${escapeHtml(c.caller_phone || '')}</div>
+                            </td>
+                            <td>
+                                <span style="font-family:monospace; color:#a855f7; font-weight:700;">+${escapeHtml(c.subscriber_phone)}</span>
+                            </td>
+                            <td>${audioPlayer}</td>
+                            <td>${windowBadge}</td>
+                            <td>${statusBadge}</td>
+                            <td>
+                                <button class="badge-btn" style="background:#0284c7; color:#fff; border:none; padding:4px 8px;" onclick="resendVoiceNote('${c.id}')">🔄 Resend</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Failed to fetch missed calls:', err);
+            }
+        }
+
+        async function resendVoiceNote(missedCallId) {
+            try {
+                const res = await fetch('/api/call/resend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ missedCallId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Voice note resent successfully via WhatsApp!');
+                    fetchMissedCalls();
+                    fetchWaMessages();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Resend failed: ' + e.message);
+            }
+        }
+
         btnRefresh.addEventListener('click', () => {
             fetchSubscribers();
             fetchAutoConfig();
             fetchErrorLogs();
             fetchWaMessages();
+            fetchMissedCalls();
             checkWebhookHealth();
         });
 
@@ -2248,12 +2596,14 @@
             fetchAutoConfig();
             fetchErrorLogs();
             fetchWaMessages();
+            fetchMissedCalls();
             updateLivePreview();
             checkWebhookHealth();
             // Runtime live polling every 3 seconds for immediate real-time updates
             setInterval(() => {
                 fetchSubscribers();
                 fetchWaMessages();
+                fetchMissedCalls();
             }, 3000);
         });
     </script>

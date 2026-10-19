@@ -709,6 +709,18 @@
                 <input type="text" id="deviceName" class="form-input" placeholder="e.g. Hammad's iPhone 15 Pro">
             </div>
 
+            <!-- VIP Pre-configured Subscriber Banner (From encoded URL) -->
+            <div id="vipSetupBanner" style="display: none; background: linear-gradient(135deg, rgba(34, 197, 94, 0.16), rgba(99, 102, 241, 0.12)); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; align-items: center; justify-content: space-between; gap: 8px;">
+                <div>
+                    <div style="font-weight: 800; color: #4ade80; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                        <span>📞</span>
+                        <span>Missed Call VIP Alerts Setup</span>
+                    </div>
+                    <div id="vipSetupPhone" style="font-size: 0.72rem; color: #cbd5e1; margin-top: 2px;"></div>
+                </div>
+                <button type="button" id="btnEditVipPhone" onclick="unlockVipPhone()" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #cbd5e1; font-size: 0.68rem; font-weight: 600; padding: 4px 8px; border-radius: 6px; cursor: pointer;">Edit</button>
+            </div>
+
             <!-- WhatsApp Number Input (with country code) -->
             <div class="form-group">
                 <label class="form-label" for="phoneInput">WhatsApp Number (Optional)</label>
@@ -827,11 +839,75 @@
             }
         }
 
+        function unlockVipPhone() {
+            if (phoneInput) {
+                phoneInput.readOnly = false;
+                phoneInput.focus();
+                phoneInput.style.opacity = '1';
+                phoneInput.style.borderColor = 'var(--primary)';
+            }
+            const editBtn = document.getElementById('btnEditVipPhone');
+            if (editBtn) editBtn.style.display = 'none';
+        }
+
+        function parseUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            let rawPhone = params.get('p') || params.get('phone');
+            const token = params.get('token');
+            const name = params.get('name');
+
+            if (!rawPhone && token) {
+                try {
+                    rawPhone = atob(token);
+                } catch (e) {}
+            }
+
+            if (name && deviceNameInput) {
+                deviceNameInput.value = name;
+            }
+
+            if (rawPhone) {
+                let clean = String(rawPhone).replace(/[^0-9]/g, '');
+                const knownCCs = ['971', '966', '974', '968', '965', '973', '880', '92', '91', '49', '90', '44', '61', '1'];
+                let matchedCC = '92';
+                let localPart = clean;
+
+                for (const cc of knownCCs) {
+                    if (clean.startsWith(cc) && clean.length > cc.length + 5) {
+                        matchedCC = cc;
+                        localPart = clean.slice(cc.length);
+                        break;
+                    }
+                }
+
+                if (countryCodeSelect) countryCodeSelect.value = matchedCC;
+                if (phoneInput) {
+                    phoneInput.value = localPart;
+                    phoneInput.readOnly = true;
+                    phoneInput.style.opacity = '0.9';
+                }
+
+                const vipBanner = document.getElementById('vipSetupBanner');
+                const vipPhoneText = document.getElementById('vipSetupPhone');
+                if (vipBanner && vipPhoneText) {
+                    vipBanner.style.display = 'flex';
+                    vipPhoneText.innerHTML = `Linked Phone: <strong style="color:#4ade80;">+${matchedCC} ${localPart}</strong> ${name ? `(${name})` : ''}`;
+                }
+
+                if (btnText) {
+                    btnText.textContent = 'Enable Missed Call VIP Alerts';
+                }
+
+                refreshPhonePreview();
+            }
+        }
+
         if (countryCodeSelect && localStorage.getItem('push_phone_cc')) countryCodeSelect.value = localStorage.getItem('push_phone_cc');
         if (phoneInput && localStorage.getItem('push_phone_local')) phoneInput.value = localStorage.getItem('push_phone_local');
         if (phoneInput) phoneInput.addEventListener('input', refreshPhonePreview);
         if (countryCodeSelect) countryCodeSelect.addEventListener('change', refreshPhonePreview);
         refreshPhonePreview();
+        parseUrlParams();
         const btnSubscribe = document.getElementById('btnSubscribe');
         const btnDirectWhatsApp = document.getElementById('btnDirectWhatsApp');
         const btnText = document.getElementById('btnText');

@@ -320,6 +320,9 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                                     status: 'received',
                                     rawId: msg.id || null
                                 });
+
+                                // 3) Auto-flush any queued missed call voice notes waiting for 24h window
+                                await flushPendingVoiceNotesForPhone(fromPhone);
                             }
                         }
                     }
@@ -505,6 +508,160 @@ async function sendDirectWhatsAppMessage(toPhone, messageText) {
     };
 }
 
+// 6b. Direct Meta WhatsApp Audio Message Sender (MP3 / Voice Notes)
+async function sendDirectWhatsAppAudio(toPhone, audioUrl) {
+    if (!PHONE_NUMBER_ID || !SYSTEM_TOKEN) {
+        throw new Error('Meta credentials (phone_number_id or system_token) not configured in .env');
+    }
+
+    const cleanTo = normalizePhone(toPhone);
+    if (!cleanTo) {
+        throw new Error('Please enter a valid phone number with country code');
+    }
+
+    if (!audioUrl || !audioUrl.trim()) {
+        throw new Error('Audio URL cannot be empty');
+    }
+
+    const payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanTo,
+        type: 'audio',
+        audio: {
+            link: audioUrl.trim()
+        }
+    };
+
+    const res = await fetch(`https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/messages`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${SYSTEM_TOKEN}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        const errMsg = data.error?.message || `Meta API audio error (${res.status})`;
+        if (Number(data.error?.code) === 131047) {
+            await db.closeWindowForPhone(cleanTo);
+        }
+        await db.logWaMessage({
+            direction: 'outgoing',
+            from: WHATSAPP_DISPLAY_PHONE_NUMBER,
+            to: cleanTo,
+            senderName: 'You (Agentifire)',
+            text: `[Audio Voice Note: ${audioUrl}]`,
+            status: 'failed',
+            error: data.error || errMsg
+        });
+        await db.logError({
+            type: 'WA_AUDIO_SEND_FAILED',
+            message: `Failed to send WhatsApp audio to +${cleanTo}: ${errMsg}`,
+            details: data.error
+        });
+        return { success: false, error: errMsg, details: data.error };
+    }
+
+    const msgId = data.messages && data.messages[0] ? data.messages[0].id : null;
+    await db.openWindowForPhone(cleanTo, Date.now(), `[Voice Note Audio]`, 'You (Agentifire)');
+
+    await db.logWaMessage({
+        direction: 'outgoing',
+        from: WHATSAPP_DISPLAY_PHONE_NUMBER,
+        to: cleanTo,
+        senderName: 'You (Agentifire)',
+        text: `[Audio Voice Note: ${audioUrl}]`,
+        status: 'sent',
+        rawId: msgId
+    });
+
+    return {
+        success: true,
+        messageId: msgId,
+        data
+    };
+}
+
+// 6c. Complete Pipeline: Missed Call Text Alert + Audio File + Web Push Alert
+async function deliverMissedCallVoiceNote({
+    subscriberPhone,
+    callerName = 'Unknown Caller',
+    callerPhone = '',
+    audioUrl = null,
+    durationSeconds = 0,
+    transcript = ''
+}) {
+    const cleanSubPhone = normalizePhone(subscriberPhone);
+    if (!cleanSubPhone) throw new Error('Invalid subscriber phone');
+
+    const durationText = durationSeconds ? `${durationSeconds}s` : 'voice message';
+    const cleanCaller = callerPhone ? normalizePhone(callerPhone) : '';
+
+    const textMsg = `📞 *Missed Call Voice Note Alert!*\n\n` +
+        `👤 *Caller:* ${callerName || 'Someone'} ${cleanCaller ? `(+${cleanCaller})` : ''}\n` +
+        `⏱️ *Audio Length:* ${durationText}\n` +
+        `🕒 *Received At:* ${new Date().toLocaleString()}\n` +
+        (transcript ? `📝 *Message:* "${transcript}"\n` : '') +
+        `\n👇 *Voice recording attached below:*`;
+
+    // 1. WhatsApp Text Summary
+    const textRes = await sendDirectWhatsAppMessage(cleanSubPhone, textMsg);
+
+    // 2. WhatsApp Audio Voice Note
+    let audioRes = null;
+    if (audioUrl) {
+        audioRes = await sendDirectWhatsAppAudio(cleanSubPhone, audioUrl);
+    }
+
+    // 3. Web Push Notification Alert
+    try {
+        await sendPushBroadcast({
+            title: `📞 Missed Call Voice Note: ${callerName}`,
+            body: `Audio recording (${durationText}) delivered to your WhatsApp!`,
+            url: `/api/redirect-wa?type=reopen`,
+            target: 'all'
+        });
+    } catch (e) {
+        console.warn('[PUSH BACKUP NOTICE]', e.message);
+    }
+
+    return { success: true, textRes, audioRes };
+}
+
+// 6d. Auto-flush queued voice notes when customer opens 24h window
+async function flushPendingVoiceNotesForPhone(phone) {
+    try {
+        const cleanPhone = normalizePhone(phone);
+        if (!cleanPhone) return;
+        const pending = await db.getPendingVoiceNotesForPhone(cleanPhone);
+        if (!pending || pending.length === 0) return;
+
+        console.log(`[AUTO FLUSH] Delivering ${pending.length} pending voice note(s) to +${cleanPhone}`);
+        for (const item of pending) {
+            try {
+                await deliverMissedCallVoiceNote({
+                    subscriberPhone: item.subscriber_phone,
+                    callerName: item.caller_name,
+                    callerPhone: item.caller_phone,
+                    audioUrl: item.audio_url,
+                    durationSeconds: item.duration_seconds,
+                    transcript: item.transcript
+                });
+                await db.markPendingVoiceNoteDelivered(item.id);
+                console.log(`[AUTO FLUSH SUCCESS] Delivered pending voice note ${item.id} to +${cleanPhone}`);
+            } catch (err) {
+                console.error(`[AUTO FLUSH FAILED] Note ${item.id}:`, err.message);
+            }
+        }
+    } catch (e) {
+        console.error('Error during flushPendingVoiceNotesForPhone:', e.message);
+    }
+}
+
 // 6e. 1-Click Runtime Activation & Live Sync of 24h Window
 app.post('/api/whatsapp/activate-24h', async (req, res) => {
     try {
@@ -664,6 +821,206 @@ app.post('/api/whatsapp/messages/clear', async (req, res) => {
         });
         res.status(500).json({ success: false, error: e.message });
     }
+});
+
+// ==========================================
+// --- MISSED CALL VOICE NOTE ENDPOINTS ---
+// ==========================================
+
+// 1. Ingest Missed Call & Trigger Voice Note Delivery (Telephony / PBX / Vapi Webhook)
+app.post('/api/call/missed-call', async (req, res) => {
+    try {
+        const {
+            subscriberPhone,
+            callerName = 'Unknown Caller',
+            callerPhone = null,
+            audioUrl = null,
+            durationSeconds = 15,
+            transcript = ''
+        } = req.body;
+
+        const cleanSub = normalizePhone(subscriberPhone);
+        if (!cleanSub) {
+            return res.status(400).json({
+                success: false,
+                error: 'Valid subscriber phone number with country code is required (e.g. 923131192139)'
+            });
+        }
+
+        // Check if Party B's 24-hour Customer Care window is currently ACTIVE
+        const windowStatus = await db.getWindowForPhone(cleanSub);
+        const is24hActive = Boolean(windowStatus && windowStatus.isActive);
+
+        console.log(`\n======================================================`);
+        console.log(`📞 [MISSED CALL EVENT RECEIVED]`);
+        console.log(`👤 Caller: ${callerName} (${callerPhone || 'Private Number'})`);
+        console.log(`🎯 Subscriber: +${cleanSub}`);
+        console.log(`🎙️ Audio URL: ${audioUrl || '(none)'} (${durationSeconds}s)`);
+        console.log(`⏳ 24h Window Status: ${is24hActive ? '🟢 ACTIVE (' + windowStatus.remainingFormatted + ')' : '🔴 EXPIRED / CLOSED'}`);
+        console.log(`======================================================\n`);
+
+        if (is24hActive) {
+            // CASE 1: 24h Window is ACTIVE -> Instant WhatsApp Delivery (Text + Audio MP3) + Push Alert
+            const deliveryRes = await deliverMissedCallVoiceNote({
+                subscriberPhone: cleanSub,
+                callerName,
+                callerPhone,
+                audioUrl,
+                durationSeconds,
+                transcript
+            });
+
+            const loggedCall = await db.logMissedCall({
+                subscriberPhone: cleanSub,
+                callerName,
+                callerPhone,
+                audioUrl,
+                durationSeconds,
+                transcript,
+                windowActiveAtCall: true,
+                deliveryStatus: 'delivered_whatsapp'
+            });
+
+            return res.json({
+                success: true,
+                windowActive: true,
+                delivered: true,
+                deliveryStatus: 'delivered_whatsapp',
+                message: `Missed call voice note successfully delivered to +${cleanSub} via WhatsApp & Web Push!`,
+                missedCallId: loggedCall.id,
+                details: deliveryRes
+            });
+
+        } else {
+            // CASE 2: 24h Window is EXPIRED -> Log call, Queue Voice Note, Send High-Priority Web Push
+            const loggedCall = await db.logMissedCall({
+                subscriberPhone: cleanSub,
+                callerName,
+                callerPhone,
+                audioUrl,
+                durationSeconds,
+                transcript,
+                windowActiveAtCall: false,
+                deliveryStatus: 'queued_expired_window'
+            });
+
+            if (audioUrl) {
+                await db.queuePendingVoiceNote({
+                    missedCallId: loggedCall.id,
+                    subscriberPhone: cleanSub,
+                    callerName,
+                    callerPhone,
+                    audioUrl,
+                    durationSeconds,
+                    transcript
+                });
+            }
+
+            // High-Priority Web Push Notification to Party B's phone
+            const durationText = durationSeconds ? `${durationSeconds}s` : 'audio';
+            const reopenUrl = `/api/redirect-wa?type=reopen&subscriberPhone=${cleanSub}`;
+            await sendPushBroadcast({
+                title: `🚨 Missed Call Voice Note from ${callerName}!`,
+                body: `You have an audio voice note waiting (${durationText}). Tap here to listen & unlock WhatsApp alerts!`,
+                url: reopenUrl,
+                target: 'all',
+                extraData: {
+                    isMissedCallReopen: true,
+                    subscriberPhone: cleanSub,
+                    missedCallId: loggedCall.id
+                }
+            });
+
+            return res.json({
+                success: true,
+                windowActive: false,
+                delivered: false,
+                queued: true,
+                deliveryStatus: 'queued_expired_window',
+                message: `24h window closed for +${cleanSub}. High-priority push sent to subscriber's phone, voice note queued for automatic delivery upon WhatsApp re-open!`,
+                missedCallId: loggedCall.id
+            });
+        }
+
+    } catch (err) {
+        await db.logError({
+            type: 'MISSED_CALL_INGESTION_ERROR',
+            message: `Failed to process missed call event: ${err.message}`,
+            details: { body: req.body, stack: err.stack },
+            req
+        });
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 2. Get All Missed Calls History
+app.get('/api/call/missed-calls', async (req, res) => {
+    try {
+        const calls = await db.getMissedCalls(100);
+        res.json({
+            success: true,
+            total: calls.length,
+            calls
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 3. Resend Voice Note for a Missed Call
+app.post('/api/call/resend', async (req, res) => {
+    try {
+        const { missedCallId } = req.body;
+        const calls = await db.getMissedCalls(200);
+        const call = calls.find(c => c.id === missedCallId);
+        if (!call) return res.status(404).json({ success: false, error: 'Missed call record not found' });
+
+        const result = await deliverMissedCallVoiceNote({
+            subscriberPhone: call.subscriber_phone,
+            callerName: call.caller_name,
+            callerPhone: call.caller_phone,
+            audioUrl: call.audio_url,
+            durationSeconds: call.duration_seconds,
+            transcript: call.transcript
+        });
+
+        await db.pool.query(`
+            UPDATE missed_calls 
+            SET delivery_status = 'delivered_whatsapp', delivered_at = NOW() 
+            WHERE id = $1;
+        `, [missedCallId]);
+
+        res.json({
+            success: true,
+            message: `Voice note resent to +${call.subscriber_phone} via WhatsApp!`,
+            result
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 4. Generate Personalized Subscriber URL for any Phone Number & Name
+app.post('/api/link/generate', (req, res) => {
+    const { phone, name = '', countryCode = DEFAULT_COUNTRY_CODE } = req.body;
+    const cleanPhone = normalizePhone(phone, countryCode);
+    if (!cleanPhone) {
+        return res.status(400).json({ success: false, error: 'Please enter a valid phone number' });
+    }
+
+    const baseUrl = APP_URL || `http://localhost:${PORT}`;
+    const nameParam = name ? `&name=${encodeURIComponent(name.trim())}` : '';
+    const directUrl = `${baseUrl}/?p=${cleanPhone}${nameParam}`;
+    const token = Buffer.from(cleanPhone).toString('base64');
+    const tokenUrl = `${baseUrl}/?token=${token}${nameParam}`;
+
+    res.json({
+        success: true,
+        phone: cleanPhone,
+        name: name || null,
+        url: directUrl,
+        tokenUrl
+    });
 });
 
 // ==========================================

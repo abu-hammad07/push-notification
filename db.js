@@ -157,10 +157,40 @@ async function initDb(options = {}) {
             body JSONB
         );
 
+        CREATE TABLE IF NOT EXISTS missed_calls (
+            id VARCHAR(100) PRIMARY KEY,
+            subscriber_phone VARCHAR(30) NOT NULL,
+            caller_name VARCHAR(150),
+            caller_phone VARCHAR(30),
+            audio_url TEXT,
+            duration_seconds INT DEFAULT 0,
+            transcript TEXT,
+            window_active_at_call BOOLEAN DEFAULT FALSE,
+            delivery_status VARCHAR(40) DEFAULT 'delivered_whatsapp',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            delivered_at TIMESTAMPTZ
+        );
+
+        CREATE TABLE IF NOT EXISTS pending_voice_notes (
+            id VARCHAR(100) PRIMARY KEY,
+            subscriber_phone VARCHAR(30) NOT NULL,
+            missed_call_id VARCHAR(100),
+            caller_name VARCHAR(150),
+            caller_phone VARCHAR(30),
+            audio_url TEXT NOT NULL,
+            duration_seconds INT DEFAULT 0,
+            transcript TEXT,
+            status VARCHAR(30) DEFAULT 'pending',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            delivered_at TIMESTAMPTZ
+        );
+
         CREATE INDEX IF NOT EXISTS idx_subscribers_phone ON subscribers(phone);
         CREATE INDEX IF NOT EXISTS idx_wa_messages_phone ON whatsapp_messages(from_phone, to_phone);
         CREATE INDEX IF NOT EXISTS idx_wa_messages_timestamp ON whatsapp_messages(timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs(timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_missed_calls_phone ON missed_calls(subscriber_phone, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_pending_voice_notes_phone ON pending_voice_notes(subscriber_phone, status);
     `);
 
     console.log('✅ [PostgreSQL] Schema ready.');
@@ -696,6 +726,114 @@ async function getLastWebhookAt() {
     return lastWebhookAt;
 }
 
+// --- Missed Calls & Pending Voice Notes ---
+
+async function logMissedCall({
+    subscriberPhone,
+    callerName = 'Unknown Caller',
+    callerPhone = null,
+    audioUrl = null,
+    durationSeconds = 0,
+    transcript = '',
+    windowActiveAtCall = false,
+    deliveryStatus = 'delivered_whatsapp'
+}) {
+    const id = 'mc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const cleanSubPhone = normalizePhone(subscriberPhone);
+    const cleanCallerPhone = callerPhone ? normalizePhone(callerPhone) : null;
+    const deliveredAt = deliveryStatus === 'delivered_whatsapp' ? new Date() : null;
+
+    const res = await pool.query(`
+        INSERT INTO missed_calls (id, subscriber_phone, caller_name, caller_phone, audio_url, duration_seconds, transcript, window_active_at_call, delivery_status, created_at, delivered_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)
+        RETURNING *;
+    `, [
+        id,
+        cleanSubPhone,
+        callerName || 'Unknown Caller',
+        cleanCallerPhone,
+        audioUrl,
+        parseInt(durationSeconds) || 0,
+        transcript || '',
+        !!windowActiveAtCall,
+        deliveryStatus,
+        deliveredAt
+    ]);
+
+    return res.rows[0];
+}
+
+async function getMissedCalls(limit = 100) {
+    const res = await pool.query(`
+        SELECT * FROM missed_calls
+        ORDER BY created_at DESC
+        LIMIT $1;
+    `, [limit]);
+    return res.rows.map(r => ({
+        ...r,
+        createdAt: r.created_at ? new Date(r.created_at).toISOString() : null,
+        deliveredAt: r.delivered_at ? new Date(r.delivered_at).toISOString() : null
+    }));
+}
+
+async function queuePendingVoiceNote({
+    missedCallId,
+    subscriberPhone,
+    callerName,
+    callerPhone,
+    audioUrl,
+    durationSeconds = 0,
+    transcript = ''
+}) {
+    const id = 'pvn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const cleanSubPhone = normalizePhone(subscriberPhone);
+    const cleanCallerPhone = callerPhone ? normalizePhone(callerPhone) : null;
+
+    const res = await pool.query(`
+        INSERT INTO pending_voice_notes (id, subscriber_phone, missed_call_id, caller_name, caller_phone, audio_url, duration_seconds, transcript, status, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
+        RETURNING *;
+    `, [
+        id,
+        cleanSubPhone,
+        missedCallId || null,
+        callerName || 'Unknown Caller',
+        cleanCallerPhone,
+        audioUrl,
+        parseInt(durationSeconds) || 0,
+        transcript || ''
+    ]);
+
+    return res.rows[0];
+}
+
+async function getPendingVoiceNotesForPhone(phone) {
+    const cleanPhone = normalizePhone(phone);
+    if (!cleanPhone) return [];
+
+    const res = await pool.query(`
+        SELECT * FROM pending_voice_notes
+        WHERE subscriber_phone = $1 AND status = 'pending'
+        ORDER BY created_at ASC;
+    `, [cleanPhone]);
+
+    return res.rows;
+}
+
+async function markPendingVoiceNoteDelivered(id) {
+    await pool.query(`
+        UPDATE pending_voice_notes
+        SET status = 'delivered', delivered_at = NOW()
+        WHERE id = $1;
+    `, [id]);
+
+    await pool.query(`
+        UPDATE missed_calls
+        SET delivery_status = 'delivered_whatsapp', delivered_at = NOW()
+        WHERE id = (SELECT missed_call_id FROM pending_voice_notes WHERE id = $1);
+    `);
+}
+
 module.exports = {
     pool,
     initDb,
@@ -721,5 +859,11 @@ module.exports = {
     getAutoConfig,
     saveAutoConfig,
     logWebhookEvent,
-    getLastWebhookAt
+    getLastWebhookAt,
+    logMissedCall,
+    getMissedCalls,
+    queuePendingVoiceNote,
+    getPendingVoiceNotesForPhone,
+    markPendingVoiceNoteDelivered
 };
+
