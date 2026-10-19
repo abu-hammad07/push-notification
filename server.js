@@ -304,24 +304,73 @@ function getWindowForPhone(phone, subs = null, messages = null) {
     return get24hStatus(sub, messages);
 }
 
-function get24hStatus(sub, messages = null) {
-    const w = (sub && sub.whatsapp24h) || {};
-    let openedAt = null;
-    if (w.openedAt) openedAt = new Date(w.openedAt).getTime();
-    else if (w.expiresAt) openedAt = new Date(w.expiresAt).getTime() - WINDOW_MS;
-    if (isNaN(openedAt)) openedAt = null;
+function get24hStatus(sub, messages = null, allSubs = null) {
+    const p = normalizePhone(sub && sub.phone);
+    const subs = allSubs || getSubscriptions();
+    const msgs = messages || getWaMessages();
 
-    const lastInboundAt = getLastInboundAt(sub && sub.phone, messages);
-    if (lastInboundAt && (!openedAt || lastInboundAt > openedAt)) openedAt = lastInboundAt;
+    let latestOpenedAt = null;
+    let latestMessage = null;
+    let closedAt = null;
 
-    let expiresAt = openedAt ? openedAt + WINDOW_MS : null;
-    // Meta explicitly told us the window is closed (error 131047) after the last inbound message
-    const closedAt = w.closedAt ? new Date(w.closedAt).getTime() : null;
-    if (closedAt && openedAt && closedAt > openedAt && closedAt < expiresAt) expiresAt = closedAt;
+    // 1. Check all subscribers sharing this exact phone number
+    if (p) {
+        subs.forEach(s => {
+            if (normalizePhone(s.phone) === p && s.whatsapp24h) {
+                const w = s.whatsapp24h;
+                if (w.openedAt) {
+                    const t = new Date(w.openedAt).getTime();
+                    if (!isNaN(t) && (!latestOpenedAt || t > latestOpenedAt)) {
+                        latestOpenedAt = t;
+                        latestMessage = w.lastMessage || latestMessage;
+                    }
+                } else if (w.expiresAt) {
+                    const expT = new Date(w.expiresAt).getTime() - WINDOW_MS;
+                    if (!isNaN(expT) && (!latestOpenedAt || expT > latestOpenedAt)) {
+                        latestOpenedAt = expT;
+                    }
+                }
+                if (w.closedAt) {
+                    const ct = new Date(w.closedAt).getTime();
+                    if (!isNaN(ct) && (!closedAt || ct > closedAt)) closedAt = ct;
+                }
+            }
+        });
+    } else if (sub && sub.whatsapp24h) {
+        const w = sub.whatsapp24h;
+        if (w.openedAt) latestOpenedAt = new Date(w.openedAt).getTime();
+        else if (w.expiresAt) latestOpenedAt = new Date(w.expiresAt).getTime() - WINDOW_MS;
+        if (w.closedAt) closedAt = new Date(w.closedAt).getTime();
+    }
+
+    // 2. Check real inbound customer messages in whatsapp-messages.json
+    const lastInboundAt = getLastInboundAt(p, msgs);
+    if (lastInboundAt && (!latestOpenedAt || lastInboundAt > latestOpenedAt)) {
+        latestOpenedAt = lastInboundAt;
+    }
+
+    // 3. Check successful OUTBOUND messages (Meta accepts free text ONLY when 24h window is open!)
+    if (p) {
+        for (const m of msgs) {
+            if (m.direction === 'outgoing' && m.status === 'sent' && normalizePhone(m.to) === p) {
+                const ot = new Date(m.timestamp).getTime();
+                if (!isNaN(ot) && (!latestOpenedAt || ot > latestOpenedAt)) {
+                    latestOpenedAt = ot;
+                    latestMessage = m.text || latestMessage;
+                }
+            }
+        }
+    }
+
+    let expiresAt = latestOpenedAt ? latestOpenedAt + WINDOW_MS : null;
+    // If Meta reported 131047 (window closed) after the message was recorded, reflect it
+    if (closedAt && latestOpenedAt && closedAt > latestOpenedAt && closedAt < expiresAt) {
+        expiresAt = closedAt;
+    }
 
     const remainingMs = expiresAt ? expiresAt - Date.now() : 0;
     const base = {
-        openedAt: openedAt ? new Date(openedAt).toISOString() : null,
+        openedAt: latestOpenedAt ? new Date(latestOpenedAt).toISOString() : null,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         lastInboundAt: lastInboundAt ? new Date(lastInboundAt).toISOString() : null
     };
@@ -329,14 +378,22 @@ function get24hStatus(sub, messages = null) {
     if (remainingMs > 0) {
         const hours = Math.floor(remainingMs / (1000 * 60 * 60));
         const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-        return { ...base, isActive: true, statusText: 'Active', remainingMs, remainingFormatted: `${hours}h ${minutes}m left` };
+        return {
+            ...base,
+            isActive: true,
+            statusText: 'Active',
+            remainingMs,
+            remainingFormatted: `${hours}h ${minutes}m left`,
+            lastMessage: latestMessage
+        };
     }
     return {
         ...base,
         isActive: false,
-        statusText: openedAt ? 'Expired' : 'Expired / Not Started',
+        statusText: latestOpenedAt ? 'Expired' : 'Expired / Not Started',
         remainingMs: 0,
-        remainingFormatted: 'Expired'
+        remainingFormatted: 'Expired',
+        lastMessage: latestMessage
     };
 }
 
@@ -849,6 +906,9 @@ async function sendDirectWhatsAppMessage(toPhone, messageText) {
     }
 
     const msgId = data.messages && data.messages[0] ? data.messages[0].id : null;
+    // Meta confirmed send succeeded -> this confirms 24h customer window is active on Meta's side!
+    openWindowForPhone(cleanTo, Date.now(), messageText);
+
     logWaMessage({
         direction: 'outgoing',
         from: WHATSAPP_DISPLAY_PHONE_NUMBER,
@@ -865,6 +925,27 @@ async function sendDirectWhatsAppMessage(toPhone, messageText) {
         data
     };
 }
+
+// 6e. 1-Click Runtime Activation & Live Sync of 24h Window
+app.post('/api/whatsapp/activate-24h', (req, res) => {
+    const { phone, subscriberId } = req.body;
+    let targetPhone = phone;
+    if (!targetPhone && subscriberId) {
+        const sub = getSubscriptions().find(s => s.id === subscriberId);
+        if (sub) targetPhone = sub.phone;
+    }
+    const cleanPhone = normalizePhone(targetPhone);
+    if (!cleanPhone) {
+        return res.status(400).json({ success: false, error: 'Valid WhatsApp phone number required' });
+    }
+    const matched = openWindowForPhone(cleanPhone, Date.now(), 'Manual runtime activation');
+    const updatedStatus = getWindowForPhone(cleanPhone);
+    res.json({
+        success: true,
+        message: `24h window activated for +${cleanPhone} (${matched.length} device(s) updated)!`,
+        status: updatedStatus
+    });
+});
 
 // 6b. Check 24h customer-service window for any number (computed from real inbound webhooks)
 app.get('/api/whatsapp/window/:phone', (req, res) => {
@@ -1028,6 +1109,15 @@ app.post('/api/subscribe', (req, res) => {
     const subscriptions = getSubscriptions();
     const existingIndex = subscriptions.findIndex(sub => sub.endpoint === subscription.endpoint);
 
+    const activeSibling = normalizedPhone 
+        ? subscriptions.find(s => normalizePhone(s.phone) === normalizedPhone && s.whatsapp24h?.isActive)
+        : null;
+    const initial24h = activeSibling 
+        ? { ...activeSibling.whatsapp24h }
+        : (existingIndex !== -1 && subscriptions[existingIndex].whatsapp24h 
+            ? subscriptions[existingIndex].whatsapp24h 
+            : { isActive: false, expiresAt: null });
+
     const subscriptionEntry = {
         id: existingIndex !== -1 ? subscriptions[existingIndex].id : 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
         name: deviceName || (platform === 'ios' ? 'Apple iPhone' : platform === 'android' ? 'Android Device' : 'Desktop Browser'),
@@ -1040,10 +1130,7 @@ app.post('/api/subscribe', (req, res) => {
         subscribedAt: existingIndex !== -1 ? subscriptions[existingIndex].subscribedAt : new Date().toISOString(),
         lastActive: new Date().toISOString(),
         lastWaClickAt: existingIndex !== -1 ? (subscriptions[existingIndex].lastWaClickAt || null) : null,
-        whatsapp24h: existingIndex !== -1 && subscriptions[existingIndex].whatsapp24h ? subscriptions[existingIndex].whatsapp24h : {
-            isActive: false,
-            expiresAt: null
-        }
+        whatsapp24h: initial24h
     };
 
     if (existingIndex !== -1) {
@@ -1125,7 +1212,7 @@ app.get('/api/subscriptions', (req, res) => {
     const subscriptions = getSubscriptions();
     const waMessages = getWaMessages();
     const sanitized = subscriptions.map(sub => {
-        const roundtrip = get24hStatus(sub, waMessages);
+        const roundtrip = get24hStatus(sub, waMessages, subscriptions);
         return {
             id: sub.id,
             name: sub.name,
