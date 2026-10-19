@@ -2206,7 +2206,11 @@
 
                 const countsEl = document.getElementById('waStatsCounts');
                 if (countsEl) {
-                    countsEl.textContent = `${data.total || 0} msgs (${data.incomingCount || 0} 📥 / ${data.outgoingCount || 0} 📤)`;
+                    const extra = [];
+                    if (data.readCount > 0) extra.push(`<span style="color:#818cf8; font-weight:700;">${data.readCount} Read ✓✓</span>`);
+                    if (data.deliveredCount > 0) extra.push(`<span style="color:#4ade80; font-weight:700;">${data.deliveredCount} Delivered ✓</span>`);
+                    const extraStr = extra.length > 0 ? ` • ${extra.join(' • ')}` : '';
+                    countsEl.innerHTML = `${data.total || 0} msgs (${data.incomingCount || 0} 📥 / ${data.outgoingCount || 0} 📤${extraStr})`;
                 }
 
                 renderWaMessagesTable(waMessagesList);
@@ -2247,14 +2251,27 @@
                     : '<span class="msg-direction-badge" style="background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35);">📤 Outbound</span>';
 
                 let statusBadge = '';
-                if (m.status === 'delivered') {
-                    statusBadge = '<span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);">✓ Delivered</span>';
-                } else if (m.status === 'read') {
-                    statusBadge = '<span class="badge" style="background: rgba(99, 102, 241, 0.18); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">✓✓ Read</span>';
+                if (m.status === 'read') {
+                    const readTimeStr = m.readAt ? new Date(m.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                    statusBadge = `
+                        <div style="display:inline-flex; flex-direction:column; align-items:flex-start; gap:2px;">
+                            <span class="badge" style="background: rgba(99, 102, 241, 0.22); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.45); font-weight:700;">✓✓ Read</span>
+                            ${readTimeStr ? `<span style="font-size:0.65rem; color:#818cf8; opacity:0.85; white-space:nowrap;">🕒 ${readTimeStr}</span>` : ''}
+                        </div>
+                    `;
+                } else if (m.status === 'delivered') {
+                    const delTimeStr = m.deliveredAt ? new Date(m.deliveredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                    statusBadge = `
+                        <div style="display:inline-flex; flex-direction:column; align-items:flex-start; gap:2px;">
+                            <span class="badge" style="background: rgba(34, 197, 94, 0.18); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.35); font-weight:700;">✓ Delivered</span>
+                            ${delTimeStr ? `<span style="font-size:0.65rem; color:#4ade80; opacity:0.85; white-space:nowrap;">🕒 ${delTimeStr}</span>` : ''}
+                        </div>
+                    `;
                 } else if (m.status === 'failed') {
-                    statusBadge = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">✕ Failed</span>';
+                    const errHint = typeof m.error === 'object' && m.error ? (m.error.message || JSON.stringify(m.error)) : (m.error || 'Failed');
+                    statusBadge = `<span class="badge" title="${escapeHtml(errHint)}" style="background: rgba(239, 68, 68, 0.18); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); font-weight:700; cursor:help;">✕ Failed</span>`;
                 } else {
-                    statusBadge = `<span class="badge" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15);">${escapeHtml(m.status || 'sent')}</span>`;
+                    statusBadge = `<span class="badge" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15);">✓ Sent</span>`;
                 }
 
                 return `

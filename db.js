@@ -201,6 +201,10 @@ async function initDb(options = {}) {
         CREATE INDEX IF NOT EXISTS idx_missed_calls_phone ON missed_calls(subscriber_phone, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_pending_voice_notes_phone ON pending_voice_notes(subscriber_phone, status);
         CREATE INDEX IF NOT EXISTS idx_invite_tokens_phone ON invite_tokens(phone);
+        CREATE INDEX IF NOT EXISTS idx_wa_messages_raw_id ON whatsapp_messages(raw_id);
+
+        ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+        ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
     `);
 
     console.log('✅ [PostgreSQL] Schema ready.');
@@ -584,18 +588,48 @@ async function logWaMessage({
     };
 }
 
-async function updateWaMessageStatus(rawId, status, error = null) {
+async function updateWaMessageStatus(rawId, status, error = null, timestamp = null) {
     if (!rawId) return;
-    await pool.query(`
-        UPDATE whatsapp_messages 
-        SET status = $1, error = $2
-        WHERE raw_id = $3;
-    `, [status, error ? JSON.stringify(error) : null, rawId]);
+    const ts = timestamp ? new Date(Number(timestamp) * 1000) : new Date();
+
+    if (status === 'read') {
+        await pool.query(`
+            UPDATE whatsapp_messages 
+            SET status = 'read',
+                read_at = COALESCE(read_at, $1),
+                error = $2
+            WHERE raw_id = $3;
+        `, [ts, error ? JSON.stringify(error) : null, rawId]);
+    } else if (status === 'delivered') {
+        await pool.query(`
+            UPDATE whatsapp_messages 
+            SET status = CASE WHEN status = 'read' THEN 'read' ELSE 'delivered' END,
+                delivered_at = COALESCE(delivered_at, $1),
+                error = $2
+            WHERE raw_id = $3;
+        `, [ts, error ? JSON.stringify(error) : null, rawId]);
+    } else if (status === 'failed') {
+        await pool.query(`
+            UPDATE whatsapp_messages 
+            SET status = 'failed',
+                error = $1
+            WHERE raw_id = $2;
+        `, [error ? JSON.stringify(error) : null, rawId]);
+    } else {
+        await pool.query(`
+            UPDATE whatsapp_messages 
+            SET status = CASE WHEN status IN ('read', 'delivered') THEN status ELSE $1 END,
+                error = $2
+            WHERE raw_id = $3;
+        `, [status, error ? JSON.stringify(error) : null, rawId]);
+    }
 }
 
 async function getWaMessages(limit = 200) {
     const res = await pool.query(`
-        SELECT id, direction, from_phone as "from", to_phone as "to", sender_name as "senderName", text, timestamp, status, raw_id as "rawId", error
+        SELECT id, direction, from_phone as "from", to_phone as "to", sender_name as "senderName", 
+               text, timestamp, status, raw_id as "rawId", error,
+               delivered_at as "deliveredAt", read_at as "readAt"
         FROM whatsapp_messages
         ORDER BY timestamp DESC
         LIMIT $1;
@@ -603,7 +637,9 @@ async function getWaMessages(limit = 200) {
 
     return res.rows.map(r => ({
         ...r,
-        timestamp: new Date(r.timestamp).toISOString()
+        timestamp: new Date(r.timestamp).toISOString(),
+        deliveredAt: r.deliveredAt ? new Date(r.deliveredAt).toISOString() : null,
+        readAt: r.readAt ? new Date(r.readAt).toISOString() : null
     }));
 }
 

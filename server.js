@@ -305,7 +305,9 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                         if (val && val.statuses && val.statuses.length > 0) {
                             for (const st of val.statuses) {
                                 const err = st.errors && st.errors[0] ? st.errors[0] : null;
-                                await db.updateWaMessageStatus(st.id, st.status, err);
+                                const statusTimestamp = st.timestamp || null;
+                                console.log(`[WHATSAPP STATUS UPDATE] Message ${st.id} -> ${st.status} (recipient: +${st.recipient_id || 'unknown'})`);
+                                await db.updateWaMessageStatus(st.id, st.status, err, statusTimestamp);
                                 if (err && Number(err.code) === 131047) {
                                     // "Re-engagement message": more than 24h since customer's last message
                                     await db.closeWindowForPhone(st.recipient_id);
@@ -793,10 +795,14 @@ app.get('/api/whatsapp/messages', async (req, res) => {
         const messages = await db.getWaMessages();
         const incomingCount = messages.filter(m => m.direction === 'incoming').length;
         const outgoingCount = messages.filter(m => m.direction === 'outgoing').length;
+        const readCount = messages.filter(m => m.status === 'read').length;
+        const deliveredCount = messages.filter(m => m.status === 'delivered').length;
         res.json({
             total: messages.length,
             incomingCount,
             outgoingCount,
+            readCount,
+            deliveredCount,
             messages
         });
     } catch (e) {
