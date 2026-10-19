@@ -36,8 +36,11 @@
     "lastActive": "2026-10-16T08:58:10.554Z",
     "lastWaClickAt": null,
     "whatsapp24h": {
-      "isActive": false,
-      "expiresAt": null
+      "isActive": true,
+      "openedAt": "2026-10-19T07:13:19.000Z",
+      "expiresAt": "2026-10-20T07:13:19.000Z",
+      "closedAt": null,
+      "lastMessage": "Hi! I want to complete my subscription and activate real-time alerts."
     }
   },
   {
@@ -56,8 +59,11 @@
     "lastActive": "2026-10-16T08:58:10.645Z",
     "lastWaClickAt": null,
     "whatsapp24h": {
-      "isActive": false,
-      "expiresAt": null
+      "isActive": true,
+      "openedAt": "2026-10-19T07:13:19.000Z",
+      "expiresAt": "2026-10-20T07:13:19.000Z",
+      "closedAt": null,
+      "lastMessage": "Hi! I want to complete my subscription and activate real-time alerts."
     }
   },
   {
@@ -76,8 +82,11 @@
     "lastActive": "2026-10-16T08:58:10.951Z",
     "lastWaClickAt": null,
     "whatsapp24h": {
-      "isActive": false,
-      "expiresAt": null
+      "isActive": true,
+      "openedAt": "2026-10-19T07:13:19.000Z",
+      "expiresAt": "2026-10-20T07:13:19.000Z",
+      "closedAt": null,
+      "lastMessage": "Hi! I want to complete my subscription and activate real-time alerts."
     }
   }
 ]

@@ -10,7 +10,8 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
-app.use(express.json());
+// Keep the raw body so Meta webhook payloads can be relayed byte-for-byte (signature stays valid)
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -20,6 +21,45 @@ const SUBSCRIPTIONS_FILE = path.join(__dirname, 'subscriptions.json');
 const AUTO_CONFIG_FILE = path.join(__dirname, 'auto-config.json');
 const ERROR_LOGS_FILE = path.join(__dirname, 'error-logs.json');
 const WA_MESSAGES_FILE = path.join(__dirname, 'whatsapp-messages.json');
+const WEBHOOK_EVENTS_FILE = path.join(__dirname, 'webhook-events.json');
+
+// --- Phone Number Normalization (always store full international format, digits only) ---
+// e.g. "03131192139" -> "923131192139", "+92 313 1192139" -> "923131192139", "0092313..." -> "92313..."
+const DEFAULT_COUNTRY_CODE = String(process.env.DEFAULT_COUNTRY_CODE || '92').replace(/[^0-9]/g, '');
+
+function normalizePhone(raw, countryCode = DEFAULT_COUNTRY_CODE) {
+    if (raw === null || raw === undefined) return null;
+    const str = String(raw).trim();
+    if (!str) return null;
+    const hasPlus = str.startsWith('+');
+    const cc = String(countryCode || DEFAULT_COUNTRY_CODE).replace(/[^0-9]/g, '');
+    let digits = str.replace(/[^0-9]/g, '');
+    if (!digits) return null;
+
+    if (digits.startsWith('00')) {
+        digits = digits.slice(2);                      // 00 international prefix
+    } else if (digits.startsWith('0')) {
+        digits = cc + digits.replace(/^0+/, '');       // local trunk prefix (03xx...)
+    } else if (!hasPlus && digits.length <= 10 && cc && !digits.startsWith(cc)) {
+        digits = cc + digits;                          // bare local number (3131192139)
+    }
+
+    if (digits.length < 8 || digits.length > 15) return null;
+    return digits;
+}
+
+// --- Helper: Keep last raw Meta webhook events (debugging delivery) ---
+let lastWebhookAt = null;
+function logWebhookEvent(body) {
+    lastWebhookAt = new Date().toISOString();
+    let events = [];
+    try {
+        if (fs.existsSync(WEBHOOK_EVENTS_FILE)) events = JSON.parse(fs.readFileSync(WEBHOOK_EVENTS_FILE, 'utf8')) || [];
+    } catch (e) { events = []; }
+    events.unshift({ receivedAt: lastWebhookAt, body });
+    if (events.length > 50) events.length = 50;
+    try { fs.writeFileSync(WEBHOOK_EVENTS_FILE, JSON.stringify(events, null, 2), 'utf8'); } catch (e) { /* ignore */ }
+}
 
 // --- Helper: Read/Write Error Logs JSON ---
 function getErrorLogs() {
@@ -116,6 +156,21 @@ function logWaMessage({
     return newEntry;
 }
 
+// Update delivery status of an outgoing message (from Meta status webhooks)
+function updateWaMessageStatus(rawId, status, error = null) {
+    if (!rawId) return;
+    const logs = getWaMessages();
+    const entry = logs.find(m => m.rawId === rawId);
+    if (!entry) return;
+    entry.status = status;
+    if (error) entry.error = error;
+    try {
+        fs.writeFileSync(WA_MESSAGES_FILE, JSON.stringify(logs, null, 2), 'utf8');
+    } catch (err) {
+        console.error('Failed to update whatsapp-messages.json:', err.message);
+    }
+}
+
 // --- WhatsApp Meta Cloud API Configuration from .env ---
 const WABA_ID = process.env.WABA_ID || process.env.waba_id || '';
 const BUSINESS_ACCOUNT_ID = process.env.BUSINESS_ACCOUNT_ID || process.env.business_account_id || '';
@@ -123,6 +178,24 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || process.env.phone_number_
 const SYSTEM_TOKEN = process.env.SYSTEM_TOKEN || process.env.system_token || '';
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || process.env.whatsapp_verify_token || 'agentifire_push_webhook_verify_2026';
 let WHATSAPP_DISPLAY_PHONE_NUMBER = (process.env.WHATSAPP_DISPLAY_PHONE_NUMBER || process.env.whatsapp_display_phone_number || '15553815350').replace(/[^0-9]/g, '');
+const APP_URL = (process.env.APP_URL || '').replace(/\/+$/, '');
+const PUBLIC_WEBHOOK_URL = APP_URL ? `${APP_URL}/api/whatsapp/webhook` : null;
+// Optional: comma-separated URLs to relay every Meta webhook payload to (e.g. Talkloo / agentifire-api)
+const WEBHOOK_FORWARD_URLS = String(process.env.WEBHOOK_FORWARD_URLS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+// Relay the exact raw payload + Meta signature to other platforms sharing this number
+function forwardWebhook(req) {
+    if (WEBHOOK_FORWARD_URLS.length === 0 || !req.rawBody) return;
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.headers['x-hub-signature-256']) headers['X-Hub-Signature-256'] = req.headers['x-hub-signature-256'];
+    if (req.headers['x-hub-signature']) headers['X-Hub-Signature'] = req.headers['x-hub-signature'];
+    WEBHOOK_FORWARD_URLS.forEach(url => {
+        fetch(url, { method: 'POST', headers, body: req.rawBody })
+            .then(r => console.log(`[WEBHOOK RELAY] -> ${url} (${r.status})`))
+            .catch(e => logError({ type: 'WEBHOOK_RELAY_FAILED', message: `Relay to ${url} failed: ${e.message}` }));
+    });
+}
 
 // Fetch & sync verified business phone number from Meta Graph API
 async function syncWhatsAppBusinessProfile() {
@@ -205,36 +278,118 @@ function saveSubscriptions(subs) {
 }
 
 // --- Helper: Check 24-Hour Roundtrip Status ---
-function get24hStatus(sub) {
-    if (!sub || !sub.whatsapp24h || !sub.whatsapp24h.expiresAt) {
-        return {
-            isActive: false,
-            statusText: 'Expired / Not Started',
-            remainingMs: 0,
-            remainingFormatted: 'Expired'
-        };
-    }
+// Meta has NO API to query the customer-service window. The window = 24h from the customer's
+// LAST inbound message, so we compute it from real inbound webhook timestamps (whatsapp-messages.json)
+// plus whatever is stored on the subscriber. If Meta rejects a send with 131047, the window is closed.
+const WINDOW_MS = 24 * 60 * 60 * 1000;
 
-    const expiresAt = new Date(sub.whatsapp24h.expiresAt).getTime();
-    const now = Date.now();
-    const remainingMs = expiresAt - now;
+function getLastInboundAt(phone, messages = null) {
+    const p = normalizePhone(phone);
+    if (!p) return null;
+    const msgs = messages || getWaMessages();
+    let latest = null;
+    for (const m of msgs) {
+        if (m.direction !== 'incoming' || normalizePhone(m.from) !== p) continue;
+        const t = new Date(m.timestamp).getTime();
+        if (!isNaN(t) && (!latest || t > latest)) latest = t;
+    }
+    return latest;
+}
+
+function getWindowForPhone(phone, subs = null, messages = null) {
+    const p = normalizePhone(phone);
+    const allSubs = subs || getSubscriptions();
+    const sameNumber = p ? allSubs.filter(s => normalizePhone(s.phone) === p) : [];
+    const sub = sameNumber[0] || { phone: p };
+    return get24hStatus(sub, messages);
+}
+
+function get24hStatus(sub, messages = null) {
+    const w = (sub && sub.whatsapp24h) || {};
+    let openedAt = null;
+    if (w.openedAt) openedAt = new Date(w.openedAt).getTime();
+    else if (w.expiresAt) openedAt = new Date(w.expiresAt).getTime() - WINDOW_MS;
+    if (isNaN(openedAt)) openedAt = null;
+
+    const lastInboundAt = getLastInboundAt(sub && sub.phone, messages);
+    if (lastInboundAt && (!openedAt || lastInboundAt > openedAt)) openedAt = lastInboundAt;
+
+    let expiresAt = openedAt ? openedAt + WINDOW_MS : null;
+    // Meta explicitly told us the window is closed (error 131047) after the last inbound message
+    const closedAt = w.closedAt ? new Date(w.closedAt).getTime() : null;
+    if (closedAt && openedAt && closedAt > openedAt && closedAt < expiresAt) expiresAt = closedAt;
+
+    const remainingMs = expiresAt ? expiresAt - Date.now() : 0;
+    const base = {
+        openedAt: openedAt ? new Date(openedAt).toISOString() : null,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        lastInboundAt: lastInboundAt ? new Date(lastInboundAt).toISOString() : null
+    };
 
     if (remainingMs > 0) {
         const hours = Math.floor(remainingMs / (1000 * 60 * 60));
         const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-        return {
+        return { ...base, isActive: true, statusText: 'Active', remainingMs, remainingFormatted: `${hours}h ${minutes}m left` };
+    }
+    return {
+        ...base,
+        isActive: false,
+        statusText: openedAt ? 'Expired' : 'Expired / Not Started',
+        remainingMs: 0,
+        remainingFormatted: 'Expired'
+    };
+}
+
+// Mark every subscriber with this phone as 24h-active (customer just messaged us)
+function openWindowForPhone(phone, openedAtMs, lastMessage) {
+    const p = normalizePhone(phone);
+    if (!p) return [];
+    const subs = getSubscriptions();
+    const matched = subs.filter(s => normalizePhone(s.phone) === p);
+    matched.forEach(s => {
+        s.phone = p;
+        s.whatsapp24h = {
             isActive: true,
-            statusText: 'Active',
-            remainingMs,
-            remainingFormatted: `${hours}h ${minutes}m left`
+            openedAt: new Date(openedAtMs).toISOString(),
+            expiresAt: new Date(openedAtMs + WINDOW_MS).toISOString(),
+            closedAt: null,
+            lastMessage
         };
-    } else {
-        return {
-            isActive: false,
-            statusText: 'Expired',
-            remainingMs: 0,
-            remainingFormatted: 'Expired'
-        };
+    });
+    if (matched.length) saveSubscriptions(subs);
+    return matched;
+}
+
+// Meta says window closed (131047) -> reflect it on all subscribers with this phone
+function closeWindowForPhone(phone) {
+    const p = normalizePhone(phone);
+    if (!p) return;
+    const subs = getSubscriptions();
+    let changed = false;
+    subs.forEach(s => {
+        if (normalizePhone(s.phone) === p) {
+            s.whatsapp24h = { ...(s.whatsapp24h || {}), isActive: false, closedAt: new Date().toISOString() };
+            changed = true;
+        }
+    });
+    if (changed) {
+        saveSubscriptions(subs);
+        console.log(`[24h WINDOW CLOSED] Meta reported 131047 for +${p}`);
+    }
+}
+
+// One-time migration: normalize any phone numbers saved without a country code
+function migrateSubscriberPhones() {
+    const subs = getSubscriptions();
+    let changed = 0;
+    subs.forEach(s => {
+        if (!s.phone) return;
+        const n = normalizePhone(s.phone);
+        if (n && n !== s.phone) { s.phone = n; changed++; }
+    });
+    if (changed) {
+        saveSubscriptions(subs);
+        console.log(`[MIGRATION] Normalized ${changed} subscriber phone number(s) to international format`);
     }
 }
 
@@ -331,9 +486,11 @@ async function sendPushBroadcast({ title, body, icon = '/icon-192.png', url = '/
     } else if (target === 'desktop') {
         recipients = allSubscriptions.filter(s => s.platform === 'desktop');
     } else if (target === 'expired_24h') {
-        recipients = allSubscriptions.filter(s => !get24hStatus(s).isActive);
+        const msgs = getWaMessages();
+        recipients = allSubscriptions.filter(s => !get24hStatus(s, msgs).isActive);
     } else if (target === 'active_24h') {
-        recipients = allSubscriptions.filter(s => get24hStatus(s).isActive);
+        const msgs = getWaMessages();
+        recipients = allSubscriptions.filter(s => get24hStatus(s, msgs).isActive);
     }
 
     const results = { total: recipients.length, sent: 0, failed: 0, cleaned: 0 };
@@ -438,19 +595,37 @@ app.post('/api/whatsapp/webhook', (req, res) => {
     try {
         const body = req.body;
         console.log('[WHATSAPP WEBHOOK] Inbound event received from Meta');
+        logWebhookEvent(body);
+        forwardWebhook(req);
 
         if (body.object === 'whatsapp_business_account') {
             if (body.entry && body.entry.length > 0) {
                 body.entry.forEach(entry => {
                     (entry.changes || []).forEach(change => {
                         const val = change.value;
+
+                        // Delivery status updates for our outgoing messages (sent/delivered/read/failed)
+                        if (val && val.statuses && val.statuses.length > 0) {
+                            val.statuses.forEach(st => {
+                                const err = st.errors && st.errors[0] ? st.errors[0] : null;
+                                updateWaMessageStatus(st.id, st.status, err);
+                                if (err && Number(err.code) === 131047) {
+                                    // "Re-engagement message": more than 24h since customer's last message
+                                    closeWindowForPhone(st.recipient_id);
+                                }
+                            });
+                        }
+
                         if (val && val.messages && val.messages.length > 0) {
                             val.messages.forEach(msg => {
-                                const fromPhone = msg.from; // e.g. "923001234567"
-                                const msgText = msg.text ? msg.text.body : (msg.type || 'media/button');
+                                const fromPhone = normalizePhone(msg.from) || String(msg.from || ''); // e.g. "923001234567"
+                                const msgText = msg.text ? msg.text.body
+                                    : (msg.button ? msg.button.text
+                                    : (msg.interactive ? (msg.interactive.button_reply?.title || msg.interactive.list_reply?.title || 'interactive')
+                                    : (msg.type || 'media/button')));
+                                // The window starts at the customer's message time (Meta's timestamp), not our receive time
                                 const timestamp = msg.timestamp ? parseInt(msg.timestamp) * 1000 : Date.now();
-                                const now = Date.now();
-                                const expiresAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+                                const expiresAt = new Date(timestamp + WINDOW_MS).toISOString();
 
                                 // Extract contact profile name if Meta provided it
                                 let contactName = 'WhatsApp Customer';
@@ -467,28 +642,29 @@ app.post('/api/whatsapp/webhook', (req, res) => {
                                 console.log(`⏳ Free 24h Customer Service Window Active Until: ${expiresAt}`);
                                 console.log(`======================================================\n`);
 
-                                // Match subscriber in subscriptions.json
-                                const subscriptions = getSubscriptions();
-                                let matched = subscriptions.find(s => s.phone && s.phone.replace(/[^0-9]/g, '') === fromPhone.replace(/[^0-9]/g, ''));
+                                // 1) Open the window on EVERY subscriber/device saved with this number
+                                let matchedSubs = openWindowForPhone(fromPhone, timestamp, msgText);
 
-                                // Fallback: If phone not yet bound, match subscriber who recently clicked the WhatsApp link
-                                if (!matched && subscriptions.length > 0) {
-                                    matched = subscriptions.slice().sort((a, b) => new Date(b.lastWaClickAt || b.lastActive || 0) - new Date(a.lastWaClickAt || a.lastActive || 0))[0];
+                                // 2) Fallback: number not bound yet -> bind to the device that tapped the WhatsApp push in the last 30 min
+                                if (matchedSubs.length === 0) {
+                                    const subscriptions = getSubscriptions();
+                                    const recentClicker = subscriptions
+                                        .filter(s => !s.phone && s.lastWaClickAt && (Date.now() - new Date(s.lastWaClickAt).getTime()) < 30 * 60 * 1000)
+                                        .sort((a, b) => new Date(b.lastWaClickAt) - new Date(a.lastWaClickAt))[0];
+                                    if (recentClicker) {
+                                        recentClicker.phone = fromPhone;
+                                        saveSubscriptions(subscriptions);
+                                        matchedSubs = openWindowForPhone(fromPhone, timestamp, msgText);
+                                    }
                                 }
 
-                                if (matched) {
-                                    matched.phone = fromPhone;
-                                    matched.whatsapp24h = {
-                                        isActive: true,
-                                        openedAt: new Date(timestamp).toISOString(),
-                                        expiresAt: expiresAt,
-                                        lastMessage: msgText
-                                    };
-                                    saveSubscriptions(subscriptions);
-                                    console.log(`[SUBSCRIPTION UPDATED] 24h roundtrip activated for ${matched.name} (${matched.id})`);
+                                if (matchedSubs.length > 0) {
+                                    console.log(`[SUBSCRIPTION UPDATED] 24h roundtrip activated for ${matchedSubs.map(s => `${s.name} (${s.id})`).join(', ')}`);
                                     if (!contactName || contactName === 'WhatsApp Customer') {
-                                        contactName = matched.name;
+                                        contactName = matchedSubs[0].name;
                                     }
+                                } else {
+                                    console.log(`[24h WINDOW] +${fromPhone} is not linked to any push subscriber yet (still tracked in message logs)`);
                                 }
 
                                 // 🟢 Record inbound message to whatsapp-messages.json logs
@@ -554,9 +730,10 @@ app.get('/api/whatsapp/status', (req, res) => {
     const subscriptions = getSubscriptions();
     let active24h = 0;
     let expired24h = 0;
+    const waMsgs = getWaMessages();
 
     subscriptions.forEach(s => {
-        if (get24hStatus(s).isActive) {
+        if (get24hStatus(s, waMsgs).isActive) {
             active24h++;
         } else {
             expired24h++;
@@ -620,8 +797,8 @@ async function sendDirectWhatsAppMessage(toPhone, messageText) {
         throw new Error('Meta credentials (phone_number_id or system_token) not configured in .env');
     }
 
-    const cleanTo = (toPhone || '').replace(/[^0-9]/g, '');
-    if (!cleanTo || cleanTo.length < 8) {
+    const cleanTo = normalizePhone(toPhone);
+    if (!cleanTo) {
         throw new Error('Please enter a valid phone number with country code (e.g. 923001234567 or 15553815350).');
     }
 
@@ -653,6 +830,7 @@ async function sendDirectWhatsAppMessage(toPhone, messageText) {
 
     if (!res.ok) {
         const errMsg = data.error?.message || `Meta API error (${res.status})`;
+        if (Number(data.error?.code) === 131047) closeWindowForPhone(cleanTo);
         logWaMessage({
             direction: 'outgoing',
             from: WHATSAPP_DISPLAY_PHONE_NUMBER,
@@ -687,6 +865,70 @@ async function sendDirectWhatsAppMessage(toPhone, messageText) {
         data
     };
 }
+
+// 6b. Check 24h customer-service window for any number (computed from real inbound webhooks)
+app.get('/api/whatsapp/window/:phone', (req, res) => {
+    const phone = normalizePhone(req.params.phone, req.query.cc);
+    if (!phone) return res.status(400).json({ success: false, error: 'Invalid phone number' });
+    const status = getWindowForPhone(phone);
+    res.json({ success: true, phone, ...status });
+});
+
+// 6c. Webhook health: where is Meta actually sending this number's events?
+app.get('/api/whatsapp/webhook-health', async (req, res) => {
+    const result = {
+        expectedWebhookUrl: PUBLIC_WEBHOOK_URL,
+        lastWebhookAt,
+        forwardUrls: WEBHOOK_FORWARD_URLS,
+        metaWebhookConfiguration: null,
+        isRoutedHere: null
+    };
+    if (!PHONE_NUMBER_ID || !SYSTEM_TOKEN) {
+        return res.json({ ...result, error: 'Meta credentials missing in .env' });
+    }
+    try {
+        const r = await fetch(`https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}?fields=webhook_configuration`, {
+            headers: { Authorization: `Bearer ${SYSTEM_TOKEN}` }
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error.message);
+        const cfg = data.webhook_configuration || {};
+        // Meta uses the most specific override: phone_number > whatsapp_business_account > application
+        const effective = cfg.phone_number || cfg.whatsapp_business_account || cfg.application || null;
+        result.metaWebhookConfiguration = cfg;
+        result.effectiveWebhookUrl = effective;
+        result.isRoutedHere = Boolean(PUBLIC_WEBHOOK_URL && effective && effective.replace(/\/+$/, '') === PUBLIC_WEBHOOK_URL);
+        res.json(result);
+    } catch (e) {
+        logError({ type: 'WEBHOOK_HEALTH_FAILED', message: e.message });
+        res.status(500).json({ ...result, error: e.message });
+    }
+});
+
+// 6d. Route this phone number's Meta webhooks to THIS server (phone-number level override)
+app.post('/api/whatsapp/webhook-override', async (req, res) => {
+    if (!PHONE_NUMBER_ID || !SYSTEM_TOKEN) return res.status(400).json({ success: false, error: 'Meta credentials missing in .env' });
+    if (!PUBLIC_WEBHOOK_URL) return res.status(400).json({ success: false, error: 'APP_URL missing in .env' });
+    try {
+        const r = await fetch(`https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${SYSTEM_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                webhook_configuration: {
+                    override_callback_uri: PUBLIC_WEBHOOK_URL,
+                    verify_token: WHATSAPP_VERIFY_TOKEN
+                }
+            })
+        });
+        const data = await r.json();
+        if (!r.ok || data.error) throw new Error(data.error?.message || `Meta API error (${r.status})`);
+        console.log(`[WEBHOOK OVERRIDE] Phone ${PHONE_NUMBER_ID} now routes webhooks to ${PUBLIC_WEBHOOK_URL}`);
+        res.json({ success: true, webhookUrl: PUBLIC_WEBHOOK_URL, data });
+    } catch (e) {
+        logError({ type: 'WEBHOOK_OVERRIDE_FAILED', message: e.message, req });
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 // 7. Get All WhatsApp Messages (Inbound & Outbound Logs)
 app.get('/api/whatsapp/messages', (req, res) => {
@@ -767,7 +1009,11 @@ app.get('/api/config', (req, res) => {
 
 // 2. Subscribe a new device with Auto WhatsApp Welcome Push
 app.post('/api/subscribe', (req, res) => {
-    const { subscription, deviceName, platform, userAgent, phone } = req.body;
+    const { subscription, deviceName, platform, userAgent, phone, countryCode } = req.body;
+    const normalizedPhone = phone ? normalizePhone(phone, countryCode) : null;
+    if (phone && !normalizedPhone) {
+        return res.status(400).json({ error: 'Invalid WhatsApp number. Please include country code, e.g. +923001234567' });
+    }
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
         logError({
@@ -789,11 +1035,11 @@ app.post('/api/subscribe', (req, res) => {
         userAgent: userAgent || req.headers['user-agent'] || '',
         endpoint: subscription.endpoint,
         keys: subscription.keys,
-        phone: phone || (existingIndex !== -1 ? subscriptions[existingIndex].phone : null),
+        phone: normalizedPhone || (existingIndex !== -1 ? subscriptions[existingIndex].phone : null),
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
         subscribedAt: existingIndex !== -1 ? subscriptions[existingIndex].subscribedAt : new Date().toISOString(),
         lastActive: new Date().toISOString(),
-        lastWaClickAt: null,
+        lastWaClickAt: existingIndex !== -1 ? (subscriptions[existingIndex].lastWaClickAt || null) : null,
         whatsapp24h: existingIndex !== -1 && subscriptions[existingIndex].whatsapp24h ? subscriptions[existingIndex].whatsapp24h : {
             isActive: false,
             expiresAt: null
@@ -877,8 +1123,9 @@ app.post('/api/unsubscribe', (req, res) => {
 // 4. List all subscribers with 24-Hour Roundtrip Live Status
 app.get('/api/subscriptions', (req, res) => {
     const subscriptions = getSubscriptions();
+    const waMessages = getWaMessages();
     const sanitized = subscriptions.map(sub => {
-        const roundtrip = get24hStatus(sub);
+        const roundtrip = get24hStatus(sub, waMessages);
         return {
             id: sub.id,
             name: sub.name,
@@ -893,7 +1140,9 @@ app.get('/api/subscriptions', (req, res) => {
                 statusText: roundtrip.statusText,
                 remainingFormatted: roundtrip.remainingFormatted,
                 remainingMs: roundtrip.remainingMs,
-                expiresAt: sub.whatsapp24h?.expiresAt || null,
+                openedAt: roundtrip.openedAt,
+                expiresAt: roundtrip.expiresAt,
+                lastInboundAt: roundtrip.lastInboundAt,
                 lastMessage: sub.whatsapp24h?.lastMessage || null
             }
         };
@@ -1101,6 +1350,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // Initialize
+migrateSubscriberPhones();
 restartRecurringTimer();
 syncWhatsAppBusinessProfile();
 

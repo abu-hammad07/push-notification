@@ -1367,6 +1367,9 @@
                 <span id="subscriberTableCount" style="font-size: 0.85rem; color: #94a3b8; font-weight: normal;">0 total</span>
             </div>
 
+            <!-- Meta Webhook Routing Health (24h tracking only works if Meta sends inbound messages HERE) -->
+            <div id="webhookHealth" style="display:none; margin-top:10px; padding:8px 11px; border-radius:8px; font-size:0.74rem; line-height:1.45;"></div>
+
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -1610,9 +1613,12 @@
                 const platformClass = sub.platform === 'ios' ? 'ios' : sub.platform === 'android' ? 'android' : 'desktop';
 
                 const is24h = sub.whatsapp24h && sub.whatsapp24h.isActive;
-                const roundtripBadge = is24h
-                    ? `<span style="display:inline-flex; align-items:center; gap:5px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.75rem;">🟢 Active (${sub.whatsapp24h.remainingFormatted})</span>`
-                    : `<span style="display:inline-flex; align-items:center; gap:5px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.75rem;">🔴 Expired / Off</span>`;
+                const lastInbound = sub.whatsapp24h && sub.whatsapp24h.lastInboundAt
+                    ? `<div style="font-size:0.66rem; color:#64748b; margin-top:3px;">Last customer msg: ${new Date(sub.whatsapp24h.lastInboundAt).toLocaleString()}</div>`
+                    : '';
+                const roundtripBadge = (is24h
+                    ? `<span style="display:inline-flex; align-items:center; gap:5px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.75rem;" title="Expires: ${sub.whatsapp24h.expiresAt ? new Date(sub.whatsapp24h.expiresAt).toLocaleString() : ''}">🟢 Active (${sub.whatsapp24h.remainingFormatted})</span>`
+                    : `<span style="display:inline-flex; align-items:center; gap:5px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.75rem;">🔴 Expired / Off</span>`) + lastInbound;
 
                 const phoneDisplay = sub.phone 
                     ? `<span style="font-family:monospace; color:#38bdf8; font-weight:600;">+${escapeHtml(sub.phone)}</span>`
@@ -1639,6 +1645,46 @@
             return String(str || '').replace(/[&<>"']/g, function(m) {
                 return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m];
             });
+        }
+
+        // Check where Meta delivers this number's webhooks (24h tracking needs inbound messages here)
+        async function checkWebhookHealth() {
+            const box = document.getElementById('webhookHealth');
+            if (!box) return;
+            try {
+                const res = await fetch('/api/whatsapp/webhook-health');
+                const h = await res.json();
+                box.style.display = 'block';
+                if (h.isRoutedHere) {
+                    box.style.background = 'rgba(34,197,94,0.10)';
+                    box.style.border = '1px solid rgba(34,197,94,0.3)';
+                    box.style.color = '#86efac';
+                    box.innerHTML = `✅ <strong>Meta webhook connected:</strong> inbound WhatsApp messages arrive here, 24h status updates live.` +
+                        (h.lastWebhookAt ? ` Last event: ${new Date(h.lastWebhookAt).toLocaleString()}` : '');
+                } else {
+                    box.style.background = 'rgba(245,158,11,0.12)';
+                    box.style.border = '1px solid rgba(245,158,11,0.35)';
+                    box.style.color = '#fde68a';
+                    box.innerHTML = `⚠️ <strong>24h status can't update:</strong> Meta is sending this number's messages to ` +
+                        `<code>${escapeHtml(h.effectiveWebhookUrl || 'unknown')}</code> instead of <code>${escapeHtml(h.expectedWebhookUrl || '(APP_URL not set)')}</code>.` +
+                        (h.error ? `<br>Error: ${escapeHtml(h.error)}` : '') +
+                        (h.expectedWebhookUrl ? ` <button class="badge-btn" style="margin-left:6px; background:#f59e0b; color:#111; border:none;" onclick="fixWebhookRouting()">Route to this server</button>` : '');
+                }
+            } catch (e) {
+                box.style.display = 'none';
+            }
+        }
+
+        async function fixWebhookRouting() {
+            if (!confirm('This tells Meta to send THIS phone number\'s WhatsApp webhooks to this server (phone-level override).\n\nThe other platform currently receiving them will stop getting events unless WEBHOOK_FORWARD_URLS is set in .env.\n\nContinue?')) return;
+            try {
+                const res = await fetch('/api/whatsapp/webhook-override', { method: 'POST' });
+                const data = await res.json();
+                alert(data.success ? '✅ Meta webhook now routed to ' + data.webhookUrl : 'Error: ' + data.error);
+                checkWebhookHealth();
+            } catch (e) {
+                alert('Failed: ' + e.message);
+            }
         }
 
         // Send 24h Re-Open Push to a single subscriber
@@ -2178,6 +2224,7 @@
             fetchAutoConfig();
             fetchErrorLogs();
             fetchWaMessages();
+            checkWebhookHealth();
         });
 
         // Init
@@ -2187,6 +2234,9 @@
             fetchErrorLogs();
             fetchWaMessages();
             updateLivePreview();
+            checkWebhookHealth();
+            // Keep 24h status / countdown live
+            setInterval(fetchSubscribers, 30000);
         });
     </script>
 </body>

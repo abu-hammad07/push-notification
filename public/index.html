@@ -323,6 +323,23 @@
             box-shadow: 0 0 0 2px var(--primary-glow);
         }
 
+        .phone-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .cc-select {
+            width: 96px;
+            flex-shrink: 0;
+            cursor: pointer;
+            padding-right: 4px;
+        }
+
+        .cc-select option {
+            background: #121826;
+            color: #fff;
+        }
+
         /* Buttons */
         .btn {
             width: 100%;
@@ -692,11 +709,29 @@
                 <input type="text" id="deviceName" class="form-input" placeholder="e.g. Hammad's iPhone 15 Pro">
             </div>
 
-            <!-- WhatsApp Number Input -->
+            <!-- WhatsApp Number Input (with country code) -->
             <div class="form-group">
                 <label class="form-label" for="phoneInput">WhatsApp Number (Optional)</label>
-                <input type="tel" id="phoneInput" class="form-input" placeholder="e.g. +923001234567 or 15553815350">
-                <span style="font-size: 0.68rem; color: #94a3b8; display: block; margin-top: 3px;">Link this device for instant 24h WhatsApp alerts</span>
+                <div class="phone-row">
+                    <select id="countryCode" class="form-input cc-select" aria-label="Country code">
+                        <option value="92" selected>🇵🇰 +92</option>
+                        <option value="91">🇮🇳 +91</option>
+                        <option value="971">🇦🇪 +971</option>
+                        <option value="966">🇸🇦 +966</option>
+                        <option value="974">🇶🇦 +974</option>
+                        <option value="968">🇴🇲 +968</option>
+                        <option value="965">🇰🇼 +965</option>
+                        <option value="973">🇧🇭 +973</option>
+                        <option value="880">🇧🇩 +880</option>
+                        <option value="1">🇺🇸 +1</option>
+                        <option value="44">🇬🇧 +44</option>
+                        <option value="61">🇦🇺 +61</option>
+                        <option value="49">🇩🇪 +49</option>
+                        <option value="90">🇹🇷 +90</option>
+                    </select>
+                    <input type="tel" id="phoneInput" class="form-input" placeholder="3001234567" inputmode="tel" autocomplete="tel-national">
+                </div>
+                <span id="phonePreview" style="font-size: 0.68rem; color: #94a3b8; display: block; margin-top: 3px;">Link this device for instant 24h WhatsApp alerts</span>
             </div>
 
             <!-- Action Buttons -->
@@ -762,6 +797,41 @@
         const statusText = document.getElementById('statusText');
         const deviceNameInput = document.getElementById('deviceName');
         const phoneInput = document.getElementById('phoneInput');
+        const countryCodeSelect = document.getElementById('countryCode');
+        const phonePreview = document.getElementById('phonePreview');
+
+        // Build full international number (digits only, e.g. 923131192139) from country code + local input
+        function getFullPhone() {
+            if (!phoneInput) return null;
+            const raw = phoneInput.value.trim();
+            if (!raw) return null;
+            const cc = countryCodeSelect ? countryCodeSelect.value : '92';
+            let digits = raw.replace(/[^0-9]/g, '');
+            if (!digits) return null;
+            if (raw.startsWith('+')) return digits;                 // user typed full +CC number
+            if (digits.startsWith('00')) return digits.slice(2);     // 00CC international prefix
+            digits = digits.replace(/^0+/, '');                      // drop local trunk 0 (03xx -> 3xx)
+            if (digits.startsWith(cc) && digits.length > 10) return digits; // already has CC
+            return cc + digits;
+        }
+
+        function refreshPhonePreview() {
+            if (!phonePreview) return;
+            const full = getFullPhone();
+            if (full) {
+                phonePreview.innerHTML = `Will be saved as <strong style="color:#4ade80;">+${full}</strong>`;
+                localStorage.setItem('push_phone_cc', countryCodeSelect.value);
+                localStorage.setItem('push_phone_local', phoneInput.value.trim());
+            } else {
+                phonePreview.textContent = 'Link this device for instant 24h WhatsApp alerts';
+            }
+        }
+
+        if (countryCodeSelect && localStorage.getItem('push_phone_cc')) countryCodeSelect.value = localStorage.getItem('push_phone_cc');
+        if (phoneInput && localStorage.getItem('push_phone_local')) phoneInput.value = localStorage.getItem('push_phone_local');
+        if (phoneInput) phoneInput.addEventListener('input', refreshPhonePreview);
+        if (countryCodeSelect) countryCodeSelect.addEventListener('change', refreshPhonePreview);
+        refreshPhonePreview();
         const btnSubscribe = document.getElementById('btnSubscribe');
         const btnDirectWhatsApp = document.getElementById('btnDirectWhatsApp');
         const btnText = document.getElementById('btnText');
@@ -927,7 +997,8 @@
                         deviceName: deviceNameInput.value.trim() || 'My Device',
                         platform: detectedPlatform,
                         userAgent: navigator.userAgent,
-                        phone: phoneInput ? phoneInput.value.trim() : null
+                        phone: getFullPhone() ? '+' + getFullPhone() : null,
+                        countryCode: countryCodeSelect ? countryCodeSelect.value : null
                     })
                 });
 
