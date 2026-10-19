@@ -1230,7 +1230,7 @@
 
         </div>
 
-        <!-- TAB 4: WHATSAPP MESSAGES LOGS & DIRECT TEST SENDER (whatsapp-messages.json) -->
+        <!-- TAB 4: WHATSAPP MESSAGES LOGS & DIRECT TEST SENDER (PostgreSQL Database) -->
         <div id="whatsappMessagesTab" class="tab-content">
             
             <!-- 1. Direct WhatsApp Message Tester -->
@@ -1274,15 +1274,15 @@
                 </div>
             </div>
 
-            <!-- 2. WhatsApp Message History Logs (whatsapp-messages.json) -->
+            <!-- 2. WhatsApp Message History Logs (PostgreSQL Database) -->
             <div class="card" style="border-color: rgba(99, 102, 241, 0.3);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <div class="card-title" style="color: #818cf8; margin-bottom: 2px;">
-                            <span>📋 WhatsApp Message Logs (whatsapp-messages.json)</span>
+                            <span>📋 WhatsApp Message Logs (PostgreSQL Database)</span>
                         </div>
                         <p style="font-size: 0.74rem; color: #94a3b8;">
-                            Live record of all incoming customer messages from Meta Webhook and outgoing test messages.
+                            Live record of all incoming customer messages from Meta Webhook and outgoing test messages stored directly in PostgreSQL database.
                         </p>
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
@@ -1321,16 +1321,16 @@
 
         </div>
 
-        <!-- TAB 5: SYSTEM ERROR LOGS (error-logs.json) -->
+        <!-- TAB 5: SYSTEM ERROR LOGS (PostgreSQL Database) -->
         <div id="logsTab" class="tab-content">
             <div class="card" style="border-color: rgba(239, 68, 68, 0.3);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <div class="card-title" style="color: #f87171; margin-bottom: 2px;">
-                            <span>⚠️ System Error Logs (error-logs.json)</span>
+                            <span>⚠️ System Error Logs (PostgreSQL Database)</span>
                         </div>
                         <p style="font-size: 0.74rem; color: #94a3b8;">
-                            Automatic real-time logs for Push delivery failures, WhatsApp webhook errors, and API exceptions stored in <code>error-logs.json</code>.
+                            Automatic real-time logs for Push delivery failures, WhatsApp webhook errors, and API exceptions stored in PostgreSQL database.
                         </p>
                     </div>
                     <div style="display: flex; gap: 6px;">
@@ -2146,7 +2146,7 @@
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="4" style="text-align: center; color: #34d399; padding: 28px;">
-                                ✅ No errors recorded in error-logs.json! System is running smoothly.
+                                ✅ No errors recorded in PostgreSQL database! System is running smoothly.
                             </td>
                         </tr>
                     `;
@@ -2177,7 +2177,7 @@
         }
 
         async function clearErrorLogs() {
-            if (!confirm('Are you sure you want to clear all error logs from error-logs.json?')) return;
+            if (!confirm('Are you sure you want to clear all error logs from PostgreSQL database?')) return;
             try {
                 const res = await fetch('/api/error-logs/clear', { method: 'POST' });
                 const data = await res.json();
@@ -2189,7 +2189,7 @@
             }
         }
 
-        // --- WhatsApp Live Messages & Direct Test Sender (whatsapp-messages.json) ---
+        // --- WhatsApp Live Messages & Direct Test Sender (PostgreSQL Database) ---
         let waMessagesList = [];
 
         async function fetchWaMessages() {
@@ -2232,7 +2232,7 @@
             }
 
             tbody.innerHTML = listToRender.map(m => {
-                const timeStr = new Date(m.timestamp).toLocaleString();
+                const timeStr = m.timestamp ? new Date(m.timestamp).toLocaleString() : '-';
                 const isInbound = m.direction === 'incoming';
                 const customerPhone = isInbound ? (m.from || '-') : (m.to || '-');
                 const cleanCustomerPhone = String(customerPhone).replace(/[^0-9]/g, '');
@@ -2241,6 +2241,21 @@
                 const displayName = isInbound
                     ? (m.senderName && m.senderName !== 'WhatsApp Customer' ? m.senderName : (matchingSub?.name || 'Customer'))
                     : (matchingSub ? `To: ${matchingSub.name}` : (m.to ? `To: +${m.to}` : 'To Customer'));
+
+                const directionBadge = isInbound
+                    ? '<span class="msg-direction-badge" style="background: rgba(34, 197, 94, 0.18); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.35);">📥 Inbound</span>'
+                    : '<span class="msg-direction-badge" style="background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35);">📤 Outbound</span>';
+
+                let statusBadge = '';
+                if (m.status === 'delivered') {
+                    statusBadge = '<span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);">✓ Delivered</span>';
+                } else if (m.status === 'read') {
+                    statusBadge = '<span class="badge" style="background: rgba(99, 102, 241, 0.18); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">✓✓ Read</span>';
+                } else if (m.status === 'failed') {
+                    statusBadge = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">✕ Failed</span>';
+                } else {
+                    statusBadge = `<span class="badge" style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15);">${escapeHtml(m.status || 'sent')}</span>`;
+                }
 
                 return `
                     <tr>
@@ -2375,7 +2390,7 @@
         }
 
         async function clearWaMessages() {
-            if (!confirm('Are you sure you want to clear all WhatsApp message logs from whatsapp-messages.json?')) return;
+            if (!confirm('Are you sure you want to clear all WhatsApp message logs from PostgreSQL database?')) return;
             try {
                 const res = await fetch('/api/whatsapp/messages/clear', { method: 'POST' });
                 const data = await res.json();
