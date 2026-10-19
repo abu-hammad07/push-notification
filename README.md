@@ -233,10 +233,9 @@ push-notification/
 ├── auto-config.json                  # Automated push & recurring triggers config
 ├── error-logs.json                   # Structured system diagnostic error logs
 ├── package.json                      # Node.js dependencies
+├── db.js                             # PostgreSQL database connection, schema & 24h dynamic logic
 ├── server.js                         # Core Express server, Webhook & Web Push engine
-├── subscriptions.json                # Device subscriptions database with 24h status
 ├── vapid-keys.json                   # Generated VAPID Public & Private key pair
-├── whatsapp-messages.json            # Inbound & outbound WhatsApp message history
 └── public/
     ├── icon-192.png                  # App icon (192x192)
     ├── icon-512.png                  # App icon (512x512)
@@ -283,6 +282,7 @@ Apple iOS and Android production browsers require Web Push to run over **HTTPS**
 1. Clone on your server and create a `.env` file:
    ```env
    PORT=4000
+   DATABASE_URL=postgres://postgres:PASSWORD@72.60.40.218:5434/postgres
    APP_URL=https://pushnotification.yourdomain.com
    DEFAULT_COUNTRY_CODE=92
 
