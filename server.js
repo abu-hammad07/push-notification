@@ -5,6 +5,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const db = require('./db');
 
 const app = express();
@@ -24,6 +25,37 @@ const DEFAULT_COUNTRY_CODE = String(process.env.DEFAULT_COUNTRY_CODE || '92').re
 
 function normalizePhone(raw, countryCode = DEFAULT_COUNTRY_CODE) {
     return db.normalizePhone(raw, countryCode);
+}
+
+// --- Secure Cryptographic Token Encryption & Verification (AES-256-GCM) ---
+const TOKEN_SECRET = process.env.TOKEN_SECRET || process.env.SYSTEM_TOKEN || 'agentifire_secure_encryption_key_2026_missed_calls';
+const TOKEN_KEY = crypto.createHash('sha256').update(String(TOKEN_SECRET)).digest();
+
+function encodeClientToken(payload) {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', TOKEN_KEY, iv);
+    let encrypted = cipher.update(JSON.stringify(payload), 'utf8', 'base64url');
+    encrypted += cipher.final('base64url');
+    const authTag = cipher.getAuthTag().toString('base64url');
+    return `${iv.toString('base64url')}.${authTag}.${encrypted}`;
+}
+
+function decodeClientToken(token) {
+    try {
+        if (!token || typeof token !== 'string') return null;
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const [ivB64, authTagB64, encryptedB64] = parts;
+        const iv = Buffer.from(ivB64, 'base64url');
+        const authTag = Buffer.from(authTagB64, 'base64url');
+        const decipher = crypto.createDecipheriv('aes-256-gcm', TOKEN_KEY, iv);
+        decipher.setAuthTag(authTag);
+        let decrypted = decipher.update(encryptedB64, 'base64url', 'utf8');
+        decrypted += decipher.final('utf8');
+        return JSON.parse(decrypted);
+    } catch (e) {
+        return null;
+    }
 }
 
 // --- WhatsApp Meta Cloud API Configuration from .env ---
@@ -1000,27 +1032,97 @@ app.post('/api/call/resend', async (req, res) => {
     }
 });
 
-// 4. Generate Personalized Subscriber URL for any Phone Number & Name
-app.post('/api/link/generate', (req, res) => {
-    const { phone, name = '', countryCode = DEFAULT_COUNTRY_CODE } = req.body;
-    const cleanPhone = normalizePhone(phone, countryCode);
-    if (!cleanPhone) {
-        return res.status(400).json({ success: false, error: 'Please enter a valid phone number' });
+// 4. Generate Personalized Cryptographically Encrypted Subscriber URL (AES-256-GCM)
+app.post('/api/link/generate', async (req, res) => {
+    try {
+        const { phone, name = '', countryCode = DEFAULT_COUNTRY_CODE } = req.body;
+        const cleanPhone = normalizePhone(phone, countryCode);
+        if (!cleanPhone) {
+            return res.status(400).json({ success: false, error: 'Please enter a valid phone number' });
+        }
+
+        const trimmedName = (name || '').trim();
+        const payload = {
+            phone: cleanPhone,
+            name: trimmedName,
+            issuedAt: Date.now()
+        };
+
+        // Cryptographically encrypt payload into a URL-safe AES-256-GCM token
+        const token = encodeClientToken(payload);
+
+        // Persist token in PostgreSQL database for verification, revocation & audit tracking
+        await db.saveInviteToken(token, cleanPhone, trimmedName);
+
+        const rawBaseUrl = APP_URL || `http://localhost:${PORT}`;
+        const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+        // The URL ONLY contains the encrypted token. Raw phone numbers are NEVER exposed!
+        const tokenUrl = `${baseUrl}/?token=${token}`;
+
+        // Mask phone for UI preview (e.g., +92 313 •••• 139)
+        const maskedPhone = cleanPhone.length > 7
+            ? `+${cleanPhone.slice(0, 5)} •••• ${cleanPhone.slice(-3)}`
+            : `+${cleanPhone}`;
+
+        res.json({
+            success: true,
+            url: tokenUrl,
+            token,
+            maskedPhone,
+            name: trimmedName || null
+        });
+    } catch (err) {
+        console.error('Error in /api/link/generate:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
+});
 
-    const baseUrl = APP_URL || `http://localhost:${PORT}`;
-    const nameParam = name ? `&name=${encodeURIComponent(name.trim())}` : '';
-    const directUrl = `${baseUrl}/?p=${cleanPhone}${nameParam}`;
-    const token = Buffer.from(cleanPhone).toString('base64');
-    const tokenUrl = `${baseUrl}/?token=${token}${nameParam}`;
+// 4b. Cryptographically Verify Secure Invite Token from Backend
+app.get('/api/link/verify', async (req, res) => {
+    try {
+        const { token } = req.query;
+        if (!token || typeof token !== 'string') {
+            return res.status(400).json({ success: false, valid: false, error: 'Missing token parameter' });
+        }
 
-    res.json({
-        success: true,
-        phone: cleanPhone,
-        name: name || null,
-        url: directUrl,
-        tokenUrl
-    });
+        // Step 1: Cryptographic AES-256-GCM verification & decryption
+        const decoded = decodeClientToken(token);
+        if (!decoded || !decoded.phone) {
+            return res.status(400).json({
+                success: false,
+                valid: false,
+                error: 'Invalid, corrupted, or tampered invitation token'
+            });
+        }
+
+        // Step 2: PostgreSQL state check & audit update (invite_tokens)
+        const dbRecord = await db.getInviteToken(token);
+        if (!dbRecord || !dbRecord.is_active) {
+            return res.status(404).json({
+                success: false,
+                valid: false,
+                error: 'Invitation link has expired or has been revoked'
+            });
+        }
+
+        const phone = dbRecord.phone || decoded.phone;
+        const name = dbRecord.name || decoded.name || '';
+        const maskedPhone = phone.length > 7
+            ? `+${phone.slice(0, 5)} •••• ${phone.slice(-3)}`
+            : `+${phone}`;
+
+        res.json({
+            success: true,
+            valid: true,
+            phone,
+            name,
+            maskedPhone,
+            verifiedAt: new Date().toISOString()
+        });
+    } catch (err) {
+        console.error('Error in /api/link/verify:', err);
+        res.status(500).json({ success: false, valid: false, error: err.message });
+    }
 });
 
 // ==========================================

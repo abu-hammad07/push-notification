@@ -185,12 +185,22 @@ async function initDb(options = {}) {
             delivered_at TIMESTAMPTZ
         );
 
+        CREATE TABLE IF NOT EXISTS invite_tokens (
+            token VARCHAR(200) PRIMARY KEY,
+            phone VARCHAR(30) NOT NULL,
+            name VARCHAR(150),
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_verified_at TIMESTAMPTZ,
+            is_active BOOLEAN DEFAULT TRUE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_subscribers_phone ON subscribers(phone);
         CREATE INDEX IF NOT EXISTS idx_wa_messages_phone ON whatsapp_messages(from_phone, to_phone);
         CREATE INDEX IF NOT EXISTS idx_wa_messages_timestamp ON whatsapp_messages(timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs(timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_missed_calls_phone ON missed_calls(subscriber_phone, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_pending_voice_notes_phone ON pending_voice_notes(subscriber_phone, status);
+        CREATE INDEX IF NOT EXISTS idx_invite_tokens_phone ON invite_tokens(phone);
     `);
 
     console.log('✅ [PostgreSQL] Schema ready.');
@@ -834,6 +844,25 @@ async function markPendingVoiceNoteDelivered(id) {
     `);
 }
 
+async function saveInviteToken(token, phone, name = '') {
+    const cleanPhone = normalizePhone(phone);
+    await pool.query(`
+        INSERT INTO invite_tokens (token, phone, name, created_at, is_active)
+        VALUES ($1, $2, $3, NOW(), TRUE)
+        ON CONFLICT (token) DO UPDATE SET phone = EXCLUDED.phone, name = EXCLUDED.name, is_active = TRUE;
+    `, [token, cleanPhone, name || '']);
+}
+
+async function getInviteToken(token) {
+    if (!token) return null;
+    const res = await pool.query(`
+        SELECT * FROM invite_tokens WHERE token = $1 AND is_active = TRUE;
+    `, [token]);
+    if (res.rows.length === 0) return null;
+    await pool.query(`UPDATE invite_tokens SET last_verified_at = NOW() WHERE token = $1;`, [token]);
+    return res.rows[0];
+}
+
 module.exports = {
     pool,
     initDb,
@@ -864,6 +893,9 @@ module.exports = {
     getMissedCalls,
     queuePendingVoiceNote,
     getPendingVoiceNotesForPhone,
-    markPendingVoiceNoteDelivered
+    markPendingVoiceNoteDelivered,
+    saveInviteToken,
+    getInviteToken
 };
+
 
