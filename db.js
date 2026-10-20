@@ -39,8 +39,12 @@ function normalizePhone(raw, defaultCountryCode = '92') {
     return digits;
 }
 
-// Compute 24h status object from timestamps (Strictly customer inbound driven)
-function compute24hStatus(windowRow, lastInboundTime) {
+// Compute 24h status object from timestamps (Strictly customer inbound driven).
+// lastOutbound = { time (ms), status } of the latest free-form message we sent to this number.
+// It NEVER opens/extends a window by itself; it is only used as PROOF reported by Meta:
+//   - delivered/read free-form message => customer window was open (Meta rejects free-form otherwise)
+//   - merely 'sent' => accepted by Meta but not yet confirmed (shown as a separate 'unconfirmed' state)
+function compute24hStatus(windowRow, lastInboundTime, lastOutbound = null) {
     let latestOpenedAt = null;
     let closedAt = null;
     let lastMessage = null;
@@ -85,17 +89,50 @@ function compute24hStatus(windowRow, lastInboundTime) {
         windowRow.last_message !== 'Manual runtime activation' &&
         !(windowRow.last_message && windowRow.last_message.startsWith('[Audio Voice Note'));
 
-    return {
+    const result = {
         isActive,
         statusText: isActive ? 'Active' : (latestOpenedAt ? 'Expired' : 'Expired / Off'),
+        source: isActive ? 'inbound' : null,
+        isUnconfirmed: false,
         remainingMs,
         remainingFormatted,
         openedAt: latestOpenedAt ? new Date(latestOpenedAt).toISOString() : null,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         closedAt: closedAt ? new Date(closedAt).toISOString() : null,
         lastInboundAt: lastInboundTime ? new Date(lastInboundTime).toISOString() : (isValidWindowForLastInbound ? new Date(windowRow.last_inbound_at).toISOString() : null),
+        lastOutboundAt: lastOutbound && lastOutbound.time ? new Date(lastOutbound.time).toISOString() : null,
         lastMessage
     };
+
+    // Fallback proof from Meta's own delivery result of our latest free-form message
+    if (!isActive && lastOutbound && lastOutbound.time && (Date.now() - lastOutbound.time) < WINDOW_MS) {
+        const st = String(lastOutbound.status || '').toLowerCase();
+        const proofExpires = lastOutbound.time + WINDOW_MS; // upper bound (exact customer msg time unknown)
+        if (st === 'delivered' || st === 'read') {
+            result.isActive = true;
+            result.statusText = 'Active';
+            result.source = 'delivery_confirmed';
+            result.remainingMs = Math.max(0, proofExpires - Date.now());
+            result.remainingFormatted = 'Confirmed by delivery';
+            result.expiresAt = null;
+        } else if (st === 'sent' || st === 'accepted') {
+            result.statusText = 'Sent OK - awaiting Meta confirmation';
+            result.isUnconfirmed = true;
+            result.source = 'sent_unconfirmed';
+        }
+    }
+
+    return result;
+}
+
+// Latest free-form message we sent to a phone (any status) used as delivery proof
+async function getLatestOutboundForPhone(phone) {
+    const r = await pool.query(`
+        SELECT timestamp, status FROM whatsapp_messages
+        WHERE direction = 'outgoing' AND to_phone = $1
+        ORDER BY timestamp DESC LIMIT 1;
+    `, [phone]);
+    return r.rows[0] ? { time: new Date(r.rows[0].timestamp).getTime(), status: r.rows[0].status } : null;
 }
 
 // --- Initialize DB & Migrate Data ---
@@ -353,7 +390,9 @@ async function getSubscribers() {
             w.last_inbound_at as "w_last_inbound_at",
             w.last_message as "w_last_message",
             w.last_sender_name as "w_last_sender_name",
-            inbound.last_inbound_time as "msg_last_inbound_at"
+            inbound.last_inbound_time as "msg_last_inbound_at",
+            outb.out_time as "out_time",
+            outb.out_status as "out_status"
         FROM subscribers s
         LEFT JOIN whatsapp_windows w ON s.phone = w.phone
         LEFT JOIN (
@@ -362,6 +401,12 @@ async function getSubscribers() {
             WHERE direction = 'incoming'
             GROUP BY from_phone
         ) inbound ON s.phone = inbound.from_phone
+        LEFT JOIN LATERAL (
+            SELECT timestamp as out_time, status as out_status
+            FROM whatsapp_messages
+            WHERE direction = 'outgoing' AND to_phone = s.phone
+            ORDER BY timestamp DESC LIMIT 1
+        ) outb ON TRUE
         ORDER BY s.subscribed_at DESC;
     `;
     const res = await pool.query(query);
@@ -378,7 +423,8 @@ async function getSubscribers() {
         } : null;
 
         const lastInboundTime = row.msg_last_inbound_at ? new Date(row.msg_last_inbound_at).getTime() : null;
-        const whatsapp24h = compute24hStatus(windowRow, lastInboundTime);
+        const lastOutbound = row.out_time ? { time: new Date(row.out_time).getTime(), status: row.out_status } : null;
+        const whatsapp24h = compute24hStatus(windowRow, lastInboundTime, lastOutbound);
 
         return {
             id: row.id,
@@ -498,7 +544,9 @@ async function getWindowForPhone(phone) {
     const lastInbound = inboundRes.rows[0] || null;
     const lastInboundTime = lastInbound ? new Date(lastInbound.timestamp).getTime() : null;
 
-    return compute24hStatus(windowRow, lastInboundTime);
+    const lastOutbound = await getLatestOutboundForPhone(cleanPhone);
+
+    return compute24hStatus(windowRow, lastInboundTime, lastOutbound);
 }
 
 async function openWindowForPhone(phone, openedAtMs = Date.now(), lastMessage = null, senderName = null) {
