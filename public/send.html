@@ -1180,52 +1180,73 @@
                 </div>
             </div>
 
-            <!-- 2. One-Click 24h Re-Activation Action Card -->
-            <div class="card" style="margin-bottom: 14px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(34, 197, 94, 0.10)); border-color: rgba(168, 85, 247, 0.3);">
-                <div class="card-title" style="color: #e9d5ff; margin-bottom: 6px;">
-                    <span>⚡ One-Click 24h Roundtrip Re-Engagement</span>
+            <!-- 2 & 3: Side-by-Side Row for 24h Re-Engagement & Message Presets -->
+            <div class="content-grid" style="grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                
+                <!-- Card Left: One-Click 24h Re-Activation Action Card -->
+                <div class="card" style="margin-bottom: 0; background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(34, 197, 94, 0.10)); border-color: rgba(168, 85, 247, 0.3); display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="card-title" style="color: #e9d5ff; margin-bottom: 6px;">
+                            <span>⚡ One-Click 24h Roundtrip Re-Engagement</span>
+                        </div>
+                        <p style="font-size: 0.78rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 14px;">
+                            When 24 hours expire, send an instant push notification asking subscribers to tap and send 1 quick WhatsApp message. This immediately revives their <strong>24h Free Customer Service Window</strong> with 0 Meta template charges!
+                        </p>
+                        <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 10px; padding: 12px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.74rem; color: #cbd5e1;">Target Devices:</span>
+                                <strong style="color: #f87171; font-size: 0.78rem;">Expired 24h Sessions Only</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.74rem; color: #cbd5e1;">Meta Template Charges:</span>
+                                <strong style="color: #4ade80; font-size: 0.78rem;">$0.00 (Zero Fee)</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.74rem; color: #cbd5e1;">Customer Action:</span>
+                                <strong style="color: #38bdf8; font-size: 0.78rem;">1-Tap Send on Phone</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" id="btnBroadcastReopen" class="btn-send" style="background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); width: 100%; padding: 10px 18px;">
+                            <span>🚀</span>
+                            <span>Broadcast 24h Re-Open Push to All Expired Devices</span>
+                        </button>
+                        <div id="reopenBroadcastFeedback" style="font-size: 0.78rem; font-weight: 600; margin-top: 8px;"></div>
+                    </div>
                 </div>
-                <p style="font-size: 0.78rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 10px;">
-                    When 24 hours expire, send an instant push notification asking subscribers to tap and send 1 quick WhatsApp message. This immediately revives their <strong>24h Free Customer Service Window</strong> with 0 Meta template charges!
-                </p>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <button type="button" id="btnBroadcastReopen" class="btn-send" style="background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); width: auto; padding: 8px 18px;">
-                        <span>🚀</span>
-                        <span>Broadcast 24h Re-Open Push to All Expired Devices</span>
+
+                <!-- Card Right: Pre-filled WhatsApp Messages Settings -->
+                <div class="card" style="margin-bottom: 0;">
+                    <div class="card-title" style="margin-bottom: 6px;">
+                        <span>💬 Default Pre-filled WhatsApp Messages</span>
+                    </div>
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px;">
+                        These messages will be automatically pre-typed into WhatsApp when customers tap push notifications.
+                    </p>
+
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="form-label" for="cfgWelcomeText" style="font-size: 0.72rem;">Welcome Pre-filled Text (On Push Subscription)</label>
+                        <input type="text" id="cfgWelcomeText" class="form-input" style="padding: 7px 10px; font-size: 0.8rem;" value="Hi! I want to complete my subscription and activate real-time alerts.">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="form-label" for="cfgPromoText" style="font-size: 0.72rem;">Promotion Pre-filled Text (On Promo Push Click)</label>
+                        <input type="text" id="cfgPromoText" class="form-input" style="padding: 7px 10px; font-size: 0.8rem;" value="Hi! I saw your promotion and I want to claim the special offer.">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label" for="cfgReopenText" style="font-size: 0.72rem;">24h Re-Open Pre-filled Text (When 24h Window is Expired)</label>
+                        <input type="text" id="cfgReopenText" class="form-input" style="padding: 7px 10px; font-size: 0.8rem;" value="Hi! Please re-open my 24h VIP alerts session.">
+                    </div>
+
+                    <button type="button" id="btnSaveWaSettings" class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 100%; padding: 10px 20px;">
+                        <span>💾</span>
+                        <span>Save WhatsApp Message Settings</span>
                     </button>
-                    <span id="reopenBroadcastFeedback" style="font-size: 0.78rem; font-weight: 600;"></span>
-                </div>
-            </div>
-
-            <!-- 3. Pre-filled WhatsApp Messages Settings -->
-            <div class="card" style="margin-bottom: 14px;">
-                <div class="card-title" style="margin-bottom: 6px;">
-                    <span>💬 Default Pre-filled WhatsApp Messages</span>
-                </div>
-                <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px;">
-                    These messages will be automatically pre-typed into WhatsApp when customers tap push notifications.
-                </p>
-
-                <div class="form-group">
-                    <label class="form-label" for="cfgWelcomeText">Welcome Pre-filled Text (On Push Subscription)</label>
-                    <input type="text" id="cfgWelcomeText" class="form-input" value="Hi! I want to complete my subscription and activate real-time alerts.">
+                    <div id="waSettingsFeedback" class="result-banner"></div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="cfgPromoText">Promotion Pre-filled Text (On Promo Push Click)</label>
-                    <input type="text" id="cfgPromoText" class="form-input" value="Hi! I saw your promotion and I want to claim the special offer.">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="cfgReopenText">24h Re-Open Pre-filled Text (When 24h Window is Expired)</label>
-                    <input type="text" id="cfgReopenText" class="form-input" value="Hi! Please re-open my 24h VIP alerts session.">
-                </div>
-
-                <button type="button" id="btnSaveWaSettings" class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: auto; padding: 8px 20px;">
-                    <span>💾</span>
-                    <span>Save WhatsApp Message Settings</span>
-                </button>
-                <div id="waSettingsFeedback" class="result-banner"></div>
             </div>
 
         </div>
