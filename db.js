@@ -93,6 +93,7 @@ function compute24hStatus(windowRow, lastInboundTime, lastOutbound = null) {
         isActive,
         statusText: isActive ? 'Active' : (latestOpenedAt ? 'Expired' : 'Expired / Off'),
         source: isActive ? 'inbound' : null,
+        isVerified: isActive,
         isUnconfirmed: false,
         remainingMs,
         remainingFormatted,
@@ -110,15 +111,31 @@ function compute24hStatus(windowRow, lastInboundTime, lastOutbound = null) {
         const proofExpires = lastOutbound.time + WINDOW_MS; // upper bound (exact customer msg time unknown)
         if (st === 'delivered' || st === 'read') {
             result.isActive = true;
+            result.isVerified = true;
             result.statusText = 'Active';
             result.source = 'delivery_confirmed';
             result.remainingMs = Math.max(0, proofExpires - Date.now());
             result.remainingFormatted = 'Confirmed by delivery';
             result.expiresAt = null;
         } else if (st === 'sent' || st === 'accepted') {
-            result.statusText = 'Sent OK - awaiting Meta confirmation';
+            // Meta accepted our free-form message and reported no failure. Shown as Active but flagged
+            // unverified (no webhook proof yet). Set TRUST_SENT_AS_ACTIVE=false in .env to disable.
+            const trust = String(process.env.TRUST_SENT_AS_ACTIVE || 'true').toLowerCase() !== 'false';
             result.isUnconfirmed = true;
-            result.source = 'sent_unconfirmed';
+            result.isVerified = false;
+            if (trust) {
+                const left = Math.max(0, proofExpires - Date.now());
+                const h = Math.floor(left / 3600000);
+                const m = Math.floor((left % 3600000) / 60000);
+                result.isActive = true;
+                result.statusText = 'Active (unverified)';
+                result.source = 'sent_unverified';
+                result.remainingMs = left;
+                result.remainingFormatted = `max ${h}h ${m}m`;
+            } else {
+                result.statusText = 'Sent OK - awaiting Meta confirmation';
+                result.source = 'sent_unconfirmed';
+            }
         }
     }
 

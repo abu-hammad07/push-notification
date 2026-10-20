@@ -1797,6 +1797,8 @@
                 let roundtripBadge;
                 if (is24h && w24.source === 'delivery_confirmed') {
                     roundtripBadge = `<span style="display:inline-flex; align-items:center; gap:5px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.75rem;" title="Meta delivered our free-form message, so the customer's 24h window is open">🟢 Active (delivery confirmed)</span>` + lastOut;
+                } else if (is24h && w24.source === 'sent_unverified') {
+                    roundtripBadge = `<span style="display:inline-flex; align-items:center; gap:5px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.75rem;" title="Meta accepted our free-form message and reported no failure. Not yet confirmed by Meta webhook, so the exact time left is unknown (at most ${w24.remainingFormatted}).">🟢 Active (sent OK · unverified)</span>` + lastOut;
                 } else if (is24h) {
                     roundtripBadge = `<span style="display:inline-flex; align-items:center; gap:5px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:4px 10px; border-radius:12px; font-weight:700; font-size:0.75rem;" title="Expires: ${sub.whatsapp24h.expiresAt ? new Date(sub.whatsapp24h.expiresAt).toLocaleString() : ''}">🟢 Active (${sub.whatsapp24h.remainingFormatted})</span>` + lastInbound;
                 } else if (w24.isUnconfirmed) {
@@ -1851,6 +1853,8 @@
                 if (data.success) {
                     if (data.isActive && data.source === 'delivery_confirmed') {
                         alert(`🟢 +${phone} 24h Window: ACTIVE (confirmed by Meta delivery)\n\nMeta delivered our last free-form message, which is only possible while the customer's 24h window is open.\n🕒 Last message sent: ${data.lastOutboundAt ? new Date(data.lastOutboundAt).toLocaleString() : '-'}`);
+                    } else if (data.isActive && data.source === 'sent_unverified') {
+                        alert(`🟢 +${phone} 24h Window: ACTIVE (sent OK · unverified)\n\nMeta accepted your last message (${data.lastOutboundAt ? new Date(data.lastOutboundAt).toLocaleString() : '-'}) and reported no failure.\nExact time left is unknown (at most ${data.remainingFormatted}). It becomes fully verified when Meta's delivery webhook or the customer's reply arrives.`);
                     } else if (data.isActive) {
                         alert(`🟢 +${phone} 24h Window: ACTIVE\n\n⏳ Remaining: ${data.remainingFormatted}\n🕒 Customer last messaged: ${data.lastInboundAt ? new Date(data.lastInboundAt).toLocaleString() : 'Active'}\n\n✅ Voice notes and freeform messages can be delivered right now.`);
                     } else if (data.isUnconfirmed) {
