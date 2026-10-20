@@ -1816,23 +1816,42 @@
             }).join('');
         }
 
-        // 1-Click Runtime Check & Sync 24h Window
+        // 1-Click Runtime Check & Sync 24h Window (Strictly Read-Only Check)
         async function runtimeSync24h(phone, subscriberId) {
             try {
-                const res = await fetch('/api/whatsapp/activate-24h', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, subscriberId })
-                });
+                const btn = window.event && window.event.target ? window.event.target : null;
+                const oldText = btn ? btn.textContent : '';
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = '⏳ Checking...';
+                }
+
+                const res = await fetch(`/api/whatsapp/window/${encodeURIComponent(phone)}`);
                 const data = await res.json();
+
+                await fetchSubscribers();
+                await fetchWaMessages();
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = oldText || '🔄 Check 24h';
+                }
+
                 if (data.success) {
-                    await fetchSubscribers();
-                    await fetchWaMessages();
+                    if (data.isActive) {
+                        alert(`🟢 +${phone} 24h Window: ACTIVE\n\n⏳ Remaining: ${data.remainingFormatted}\n🕒 Customer last messaged: ${data.lastInboundAt ? new Date(data.lastInboundAt).toLocaleString() : 'Active'}\n\n✅ Voice notes and freeform messages can be delivered right now.`);
+                    } else {
+                        alert(`🔴 +${phone} 24h Window: EXPIRED / CLOSED\n\n⚠️ No inbound WhatsApp message received from this user in the last 24 hours.\n\n💡 Window will automatically turn ON when the user sends a message on WhatsApp.\n👉 Tip: Click "⚡ Re-open Push" to prompt user to reply.`);
+                    }
                 } else {
-                    alert('Error: ' + data.error);
+                    alert('Error checking status: ' + (data.error || 'Unknown error'));
                 }
             } catch (e) {
-                alert('Sync failed: ' + e.message);
+                if (window.event && window.event.target) {
+                    window.event.target.disabled = false;
+                    window.event.target.textContent = '🔄 Check 24h';
+                }
+                alert('Check failed: ' + e.message);
             }
         }
 

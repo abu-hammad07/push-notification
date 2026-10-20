@@ -522,9 +522,6 @@ async function sendDirectWhatsAppMessage(toPhone, messageText) {
 
     const msgId = data.messages && data.messages[0] ? data.messages[0].id : null;
     
-    // Meta confirmed send succeeded -> activates 24h window in PostgreSQL in real time!
-    await db.openWindowForPhone(cleanTo, Date.now(), messageText, 'You (Agentifire)');
-
     await db.logWaMessage({
         direction: 'outgoing',
         from: WHATSAPP_DISPLAY_PHONE_NUMBER,
@@ -601,7 +598,6 @@ async function sendDirectWhatsAppAudio(toPhone, audioUrl) {
     }
 
     const msgId = data.messages && data.messages[0] ? data.messages[0].id : null;
-    await db.openWindowForPhone(cleanTo, Date.now(), `[Voice Note Audio]`, 'You (Agentifire)');
 
     await db.logWaMessage({
         direction: 'outgoing',
@@ -696,7 +692,7 @@ async function flushPendingVoiceNotesForPhone(phone) {
     }
 }
 
-// 6e. 1-Click Runtime Activation & Live Sync of 24h Window
+// 6e. 1-Click Runtime Check & Live Sync of 24h Window (Strictly Read-Only)
 app.post('/api/whatsapp/activate-24h', async (req, res) => {
     try {
         const { phone, subscriberId } = req.body;
@@ -709,11 +705,11 @@ app.post('/api/whatsapp/activate-24h', async (req, res) => {
         if (!cleanPhone) {
             return res.status(400).json({ success: false, error: 'Valid WhatsApp phone number required' });
         }
-        await db.openWindowForPhone(cleanPhone, Date.now(), 'Manual runtime activation');
+        // Strict WhatsApp Rule: Window can ONLY be activated by actual inbound customer WhatsApp message
         const updatedStatus = await db.getWindowForPhone(cleanPhone);
         res.json({
             success: true,
-            message: `24h window activated in PostgreSQL for +${cleanPhone}!`,
+            message: `24h window checked for +${cleanPhone}`,
             status: updatedStatus
         });
     } catch (e) {

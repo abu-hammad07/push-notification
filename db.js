@@ -39,24 +39,29 @@ function normalizePhone(raw, defaultCountryCode = '92') {
     return digits;
 }
 
-// Compute 24h status object from timestamps
-function compute24hStatus(windowRow, latestMsgTime, lastInboundTime) {
+// Compute 24h status object from timestamps (Strictly customer inbound driven)
+function compute24hStatus(windowRow, lastInboundTime) {
     let latestOpenedAt = null;
     let closedAt = null;
     let lastMessage = null;
 
     if (windowRow) {
-        if (windowRow.opened_at) latestOpenedAt = new Date(windowRow.opened_at).getTime();
+        // Only consider opened_at if it was legitimately initiated by a customer inbound message (never outbound or manual activation)
+        const isValidInbound = windowRow.opened_at &&
+            windowRow.last_sender_name !== 'You (Agentifire)' &&
+            windowRow.last_message !== 'Manual runtime activation' &&
+            !(windowRow.last_message && windowRow.last_message.startsWith('[Audio Voice Note'));
+
+        if (isValidInbound) {
+            latestOpenedAt = new Date(windowRow.opened_at).getTime();
+            lastMessage = windowRow.last_message || null;
+        }
         if (windowRow.closed_at) closedAt = new Date(windowRow.closed_at).getTime();
-        lastMessage = windowRow.last_message || null;
     }
 
+    // Inbound customer message is the authoritative trigger for 24h window
     if (lastInboundTime && (!latestOpenedAt || lastInboundTime > latestOpenedAt)) {
         latestOpenedAt = lastInboundTime;
-    }
-
-    if (latestMsgTime && (!latestOpenedAt || latestMsgTime > latestOpenedAt)) {
-        latestOpenedAt = latestMsgTime;
     }
 
     let expiresAt = latestOpenedAt ? latestOpenedAt + WINDOW_MS : null;
@@ -74,15 +79,21 @@ function compute24hStatus(windowRow, latestMsgTime, lastInboundTime) {
         remainingFormatted = `${hours}h ${minutes}m left`;
     }
 
+    const isValidWindowForLastInbound = windowRow &&
+        windowRow.last_inbound_at &&
+        windowRow.last_sender_name !== 'You (Agentifire)' &&
+        windowRow.last_message !== 'Manual runtime activation' &&
+        !(windowRow.last_message && windowRow.last_message.startsWith('[Audio Voice Note'));
+
     return {
         isActive,
-        statusText: isActive ? 'Active' : (latestOpenedAt ? 'Expired' : 'Expired / Not Started'),
+        statusText: isActive ? 'Active' : (latestOpenedAt ? 'Expired' : 'Expired / Off'),
         remainingMs,
         remainingFormatted,
         openedAt: latestOpenedAt ? new Date(latestOpenedAt).toISOString() : null,
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         closedAt: closedAt ? new Date(closedAt).toISOString() : null,
-        lastInboundAt: lastInboundTime ? new Date(lastInboundTime).toISOString() : (windowRow && windowRow.last_inbound_at ? new Date(windowRow.last_inbound_at).toISOString() : null),
+        lastInboundAt: lastInboundTime ? new Date(lastInboundTime).toISOString() : (isValidWindowForLastInbound ? new Date(windowRow.last_inbound_at).toISOString() : null),
         lastMessage
     };
 }
@@ -320,7 +331,7 @@ async function initDb(options = {}) {
 // --- Subscribers ---
 
 async function getSubscribers() {
-    // Left join with whatsapp_windows so every device gets the exact same phone-level 24h status
+    // Left join with whatsapp_windows and latest inbound customer message
     const query = `
         SELECT 
             s.id,
@@ -341,9 +352,16 @@ async function getSubscribers() {
             w.closed_at as "w_closed_at",
             w.last_inbound_at as "w_last_inbound_at",
             w.last_message as "w_last_message",
-            w.last_sender_name as "w_last_sender_name"
+            w.last_sender_name as "w_last_sender_name",
+            inbound.last_inbound_time as "msg_last_inbound_at"
         FROM subscribers s
         LEFT JOIN whatsapp_windows w ON s.phone = w.phone
+        LEFT JOIN (
+            SELECT from_phone, MAX(timestamp) as last_inbound_time
+            FROM whatsapp_messages
+            WHERE direction = 'incoming'
+            GROUP BY from_phone
+        ) inbound ON s.phone = inbound.from_phone
         ORDER BY s.subscribed_at DESC;
     `;
     const res = await pool.query(query);
@@ -359,7 +377,8 @@ async function getSubscribers() {
             last_sender_name: row.w_last_sender_name
         } : null;
 
-        const whatsapp24h = compute24hStatus(windowRow);
+        const lastInboundTime = row.msg_last_inbound_at ? new Date(row.msg_last_inbound_at).getTime() : null;
+        const whatsapp24h = compute24hStatus(windowRow, lastInboundTime);
 
         return {
             id: row.id,
@@ -463,13 +482,13 @@ async function deleteSubscriber(id) {
 async function getWindowForPhone(phone) {
     const cleanPhone = normalizePhone(phone);
     if (!cleanPhone) {
-        return compute24hStatus(null, null, null);
+        return compute24hStatus(null, null);
     }
 
     const windowRes = await pool.query('SELECT * FROM whatsapp_windows WHERE phone = $1', [cleanPhone]);
     const windowRow = windowRes.rows[0] || null;
 
-    // Also check latest inbound customer message
+    // Check latest inbound customer message
     const inboundRes = await pool.query(`
         SELECT timestamp, text, sender_name 
         FROM whatsapp_messages 
@@ -479,17 +498,7 @@ async function getWindowForPhone(phone) {
     const lastInbound = inboundRes.rows[0] || null;
     const lastInboundTime = lastInbound ? new Date(lastInbound.timestamp).getTime() : null;
 
-    // Check latest successful outbound message
-    const outboundRes = await pool.query(`
-        SELECT timestamp, text 
-        FROM whatsapp_messages 
-        WHERE direction = 'outgoing' AND status = 'sent' AND to_phone = $1 
-        ORDER BY timestamp DESC LIMIT 1;
-    `, [cleanPhone]);
-    const lastOutbound = outboundRes.rows[0] || null;
-    const lastOutboundTime = lastOutbound ? new Date(lastOutbound.timestamp).getTime() : null;
-
-    return compute24hStatus(windowRow, lastOutboundTime, lastInboundTime);
+    return compute24hStatus(windowRow, lastInboundTime);
 }
 
 async function openWindowForPhone(phone, openedAtMs = Date.now(), lastMessage = null, senderName = null) {
@@ -564,13 +573,9 @@ async function logWaMessage({
         error ? JSON.stringify(error) : null
     ]);
 
-    // Runtime Trigger: Inbound customer message automatically activates 24h window
+    // Runtime Trigger: Only INBOUND customer message automatically activates 24h window
     if (direction === 'incoming' && cleanFrom) {
         await openWindowForPhone(cleanFrom, msgDate.getTime(), text, senderName);
-    }
-    // Runtime Trigger: Successful outbound delivery proves 24h window was open
-    if (direction === 'outgoing' && status === 'sent' && cleanTo) {
-        await openWindowForPhone(cleanTo, msgDate.getTime(), text, 'You (Agentifire)');
     }
 
     const row = res.rows[0];
